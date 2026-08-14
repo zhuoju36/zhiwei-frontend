@@ -28,6 +28,11 @@ export const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '历史查询' },
       },
       {
+        path: 'spectrum',
+        component: () => import('@/views/Analysis/Spectrum.vue'),
+        meta: { requiresAuth: true, title: '频谱分析' },
+      },
+      {
         path: 'evaluation',
         component: () => import('@/views/Analysis/Evaluation.vue'),
         meta: { requiresAuth: true, title: '数据评估' },
@@ -56,9 +61,24 @@ export const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAdmin: true, title: '子项管理' },
       },
       {
+        path: 'devices',
+        component: () => import('@/views/Admin/DeviceManage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '设备管理' },
+      },
+      {
         path: 'points',
         component: () => import('@/views/Admin/PointManage.vue'),
         meta: { requiresAuth: true, requiresAdmin: true, title: '测点管理' },
+      },
+      {
+        path: 'sensors',
+        component: () => import('@/views/Admin/SensorManage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '传感器管理' },
+      },
+      {
+        path: 'channels',
+        component: () => import('@/views/Admin/ChannelManage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '通道管理' },
       },
       {
         path: 'users',

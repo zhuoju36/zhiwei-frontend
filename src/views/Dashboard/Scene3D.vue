@@ -4,16 +4,18 @@ import * as THREE from 'three'
 import { SceneManager } from '@/components/ThreeScene/SceneManager'
 import { ModelLoader } from '@/components/ThreeScene/ModelLoader'
 import { PointManager, type PointVisual } from '@/components/ThreeScene/PointManager'
+import { getModelFileBlob } from '@/api/model'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useWebSocketStore } from '@/stores/websocket'
 import { qualityToStatus } from '@/utils/color'
+import type { PointStatus } from '@/types'
 
 interface Props {
-  /** 项目的模型文件 key；为空则不加载模型 */
-  modelFileKey?: string | null
+  /** 当前子项的成功模型 id；为空则不加载模型 */
+  modelId?: number | null
 }
 const props = withDefaults(defineProps<Props>(), {
-  modelFileKey: null,
+  modelId: null,
 })
 
 const dashboardStore = useDashboardStore()
@@ -30,48 +32,69 @@ let currentModel: THREE.Group | null = null
 let raycaster: THREE.Raycaster | null = null
 let clickHandler: ((event: MouseEvent) => void) | null = null
 
-async function loadModel(key: string | null): Promise<void> {
+/**
+ * 模型文件接口需 JWT（非公开）：带 Authorization 的 blob 请求 → objectURL → GLTFLoader。
+ * 拿到 objectURL 后立即 revoke，避免占用内存。
+ */
+async function loadModel(id: number | null): Promise<void> {
   if (!sceneManager) return
   if (currentModel) {
     sceneManager.getScene().remove(currentModel)
     currentModel = null
   }
   modelError.value = ''
-  if (!key) return
+  if (id == null) return
 
   modelLoading.value = true
+  let objectUrl: string | null = null
   try {
+    const blob = await getModelFileBlob(id)
+    objectUrl = URL.createObjectURL(blob)
     const loader = new ModelLoader()
-    // 开发期兜底 public/models/ 静态目录
-    currentModel = await loader.loadGLB(`/models/${key}`)
+    currentModel = await loader.loadGLB(objectUrl)
     sceneManager.getScene().add(currentModel)
   } catch {
     // 模型加载失败不阻塞数据面板
     modelError.value = '3D 模型加载失败，仅显示数据面板'
   } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
     modelLoading.value = false
   }
 }
 
-/** 把有坐标的测点交给 PointManager（项目切换时 clear 后重新 init） */
+/** 把有坐标的测点交给 PointManager（子项切换时 clear 后重新 init） */
 function setupPoints(): void {
   if (!pointManager) return
   const visuals: PointVisual[] = dashboardStore.points
     .filter((p) => p.position != null)
     .map((p) => {
-      const rt = wsStore.latestData[p.id]
+      // 实时值按通道推送：该测点任一通道的最新值（优先时间戳最新）
+      let value = 0
+      let status: PointStatus = 'normal'
+      let latestTs = -1
+      const channelIds = dashboardStore.channelIdsByPoint[p.id] ?? []
+      channelIds.forEach((cid) => {
+        const rt = wsStore.latestData[cid]
+        if (!rt) return
+        const ts = new Date(rt.timestamp).getTime()
+        if (ts > latestTs) {
+          latestTs = ts
+          value = rt.value
+          status = qualityToStatus(rt.quality)
+        }
+      })
       return {
         pointId: p.id,
         position: new THREE.Vector3(p.position!.x, p.position!.y, p.position!.z),
-        status: rt ? qualityToStatus(rt.quality) : 'normal',
-        value: rt?.value ?? 0,
-        name: p.point_name,
+        status,
+        value,
+        name: p.point_name ?? p.point_code,
       }
     })
   pointManager.initPoints(visuals)
 }
 
-/** 射线检测：点击测点与 PointPanel/底部曲线联动 */
+/** 射线检测：点击测点选中其首个通道，与 PointPanel/底部曲线联动 */
 function setupInteraction(): void {
   if (!sceneManager) return
   raycaster = new THREE.Raycaster()
@@ -85,7 +108,10 @@ function setupInteraction(): void {
     raycaster.setFromCamera(mouse, sceneManager.getCamera())
     const point = pointManager.getPointByRay(raycaster)
     if (point) {
-      dashboardStore.selectPoint(point.pointId)
+      const channelIds = dashboardStore.channelIdsByPoint[point.pointId] ?? []
+      if (channelIds.length > 0) {
+        dashboardStore.selectChannel(channelIds[0])
+      }
     }
   }
   dom.addEventListener('click', clickHandler)
@@ -98,24 +124,34 @@ onMounted(() => {
   pointManager = new PointManager(sceneManager.getScene())
   setupInteraction()
   setupPoints()
-  void loadModel(props.modelFileKey)
+  void loadModel(props.modelId)
 })
 
 watch(
-  () => props.modelFileKey,
-  (key) => void loadModel(key ?? null),
+  () => props.modelId,
+  (id) => void loadModel(id ?? null),
 )
 
-// 测点列表加载/项目切换后重建测点渲染
+// 测点列表加载/子项切换后重建测点渲染
 watch(() => dashboardStore.points, setupPoints)
 
-// WebSocket 实时数据 → 更新测点颜色
+// WebSocket 实时数据 → 经 channelPointMap 聚合到测点 → 更新测点颜色
 watch(
   () => wsStore.latestData,
   (dataMap) => {
     if (!pointManager) return
+    const latestByPoint = new Map<number, { value: number; status: PointStatus; ts: number }>()
     Object.values(dataMap).forEach((p) => {
-      pointManager!.updatePoint(p.point_id, p.value, qualityToStatus(p.quality))
+      const pointId = dashboardStore.channelPointMap[p.channel_id]
+      if (pointId == null) return
+      const ts = new Date(p.timestamp).getTime()
+      const cur = latestByPoint.get(pointId)
+      if (cur == null || ts > cur.ts) {
+        latestByPoint.set(pointId, { value: p.value, status: qualityToStatus(p.quality), ts })
+      }
+    })
+    latestByPoint.forEach((v, pointId) => {
+      pointManager!.updatePoint(pointId, v.value, v.status)
     })
   },
   { deep: true },
@@ -141,8 +177,9 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .scene-container {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
   position: relative;
   overflow: hidden;
 }

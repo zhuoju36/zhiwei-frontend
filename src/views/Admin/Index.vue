@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Aim, Connection, Document, Files, User } from '@element-plus/icons-vue'
+import { Aim, Connection, Document, Files, Monitor, SetUp, User } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
 
 const route = useRoute()
@@ -18,9 +18,21 @@ const activePath = computed(() => route.path)
             <el-icon><Files /></el-icon>
             <span>子项管理</span>
           </el-menu-item>
+          <el-menu-item index="/admin/devices">
+            <el-icon><Monitor /></el-icon>
+            <span>设备管理</span>
+          </el-menu-item>
           <el-menu-item index="/admin/points">
             <el-icon><Aim /></el-icon>
             <span>测点管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/sensors">
+            <el-icon><SetUp /></el-icon>
+            <span>传感器管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/channels">
+            <el-icon><Connection /></el-icon>
+            <span>通道管理</span>
           </el-menu-item>
           <el-menu-item index="/admin/users">
             <el-icon><User /></el-icon>

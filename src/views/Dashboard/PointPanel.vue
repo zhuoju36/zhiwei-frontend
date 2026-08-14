@@ -8,61 +8,63 @@ import { formatTime, formatValue } from '@/utils/format'
 const dashboardStore = useDashboardStore()
 const wsStore = useWebSocketStore()
 
-// 兜底：WS 实时流中出现但测点列表没有的 point_id
+// 兜底：WS 实时流中出现但通道列表没有的 channel_id
 const fallbackIds = computed<number[]>(() =>
-  wsStore.knownPointIds.filter((id) => !dashboardStore.pointMap.has(id)),
+  wsStore.knownChannelIds.filter((id) => !dashboardStore.channelMap.has(id)),
 )
 
-const totalCount = computed(() => dashboardStore.points.length + fallbackIds.value.length)
+const totalCount = computed(() => dashboardStore.channels.length + fallbackIds.value.length)
 
 function onSelect(id: number): void {
-  dashboardStore.selectPoint(id)
+  dashboardStore.selectChannel(id)
 }
 </script>
 
 <template>
-  <div v-loading="dashboardStore.pointsLoading" class="point-panel">
-    <div class="panel-title">实时测点（{{ totalCount }}）</div>
-    <el-empty v-if="totalCount === 0" description="暂无测点" :image-size="60" />
+  <div v-loading="dashboardStore.channelsLoading" class="point-panel">
+    <div class="panel-title">实时通道（{{ totalCount }}）</div>
+    <el-empty v-if="totalCount === 0" description="暂无通道" :image-size="60" />
     <div v-else class="point-list">
       <div
-        v-for="p in dashboardStore.points"
-        :key="p.id"
+        v-for="c in dashboardStore.channels"
+        :key="c.id"
         class="point-item"
-        :class="{ active: dashboardStore.selectedPointId === p.id }"
-        @click="onSelect(p.id)"
+        :class="{ active: dashboardStore.selectedChannelId === c.id }"
+        @click="onSelect(c.id)"
       >
         <div class="point-head">
-          <span class="point-name">{{ p.point_name }}</span>
+          <span class="point-name">{{ c.channel_code }}</span>
           <el-tag
             size="small"
             effect="dark"
-            :color="wsStore.latestData[p.id] ? qualityColor(wsStore.latestData[p.id].quality) : UNKNOWN_COLOR"
+            :color="wsStore.latestData[c.id] ? qualityColor(wsStore.latestData[c.id].quality) : UNKNOWN_COLOR"
             class="quality-tag"
           >
-            {{ wsStore.latestData[p.id]?.quality ?? '暂无数据' }}
+            {{ wsStore.latestData[c.id]?.quality ?? '暂无数据' }}
           </el-tag>
         </div>
-        <div class="point-sub">{{ p.point_code }} · {{ p.point_type }}</div>
+        <div class="point-sub">{{ c.channel_type || '未分类' }} · {{ c.sampling_rate }}Hz</div>
         <div class="point-value">
-          <template v-if="wsStore.latestData[p.id]">
-            {{ formatValue(wsStore.latestData[p.id].value, wsStore.latestData[p.id].unit || p.unit) }}
+          <template v-if="wsStore.latestData[c.id]">
+            {{ formatValue(wsStore.latestData[c.id].value, wsStore.latestData[c.id].unit || c.unit) }}
           </template>
           <span v-else class="no-data">暂无数据</span>
         </div>
-        <div v-if="wsStore.latestData[p.id]" class="point-time">
-          {{ formatTime(wsStore.latestData[p.id].timestamp) }}
+        <div v-if="wsStore.latestData[c.id]" class="point-time">
+          {{ formatTime(wsStore.latestData[c.id].timestamp) }}
         </div>
       </div>
       <div
         v-for="id in fallbackIds"
         :key="id"
         class="point-item"
-        :class="{ active: dashboardStore.selectedPointId === id }"
+        :class="{ active: dashboardStore.selectedChannelId === id }"
         @click="onSelect(id)"
       >
         <div class="point-head">
-          <span class="point-name">测点 #{{ id }}</span>
+          <span class="point-name">
+            {{ wsStore.latestData[id].device_code }}/{{ wsStore.latestData[id].channel_code }}
+          </span>
           <el-tag
             size="small"
             effect="dark"

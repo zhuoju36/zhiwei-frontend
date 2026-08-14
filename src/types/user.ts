@@ -13,3 +13,16 @@ export interface LoginResponse {
   refresh_token: string
   token_type: string
 }
+
+/** 用户角色 */
+export type UserRole = 'admin' | 'user'
+
+/** 用户（对应后端 UserOut，仅 admin 可查） */
+export interface UserOut {
+  id: number
+  username: string
+  email: string
+  role: UserRole
+  is_active: boolean
+  created_at: string
+}

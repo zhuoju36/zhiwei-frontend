@@ -39,42 +39,53 @@ frontend/
 |   |
 |   +-- stores/                 # Pinia 状态管理，一模块一文件
 |   |   +-- index.ts            # Pinia 实例导出
-|   |   +-- user.ts             # 用户状态：token、角色、项目权限列表
-|   |   +-- websocket.ts        # WebSocket 连接管理：自动重连、心跳、消息分发
-|   |   +-- dashboard.ts        # 大屏数据缓存：测点最新值、统计卡片
+|   |   +-- user.ts             # 用户状态：token、角色
+|   |   +-- websocket.ts        # WebSocket 连接管理：自动重连、消息分发、data:alert
+|   |   +-- dashboard.ts        # 大屏数据缓存：子项/设备/测点/传感器/通道、channelPointMap、统计卡片
 |   |   +-- app.ts              # 全局 UI 状态：侧边栏折叠、主题、加载状态
 |   |
 |   +-- api/                    # API 接口封装
-|   |   +-- request.ts          # Axios 实例：拦截器、错误处理、Token 刷新
-|   |   +-- types.ts            # 通用 API 响应类型定义
+|   |   +-- request.ts          # Axios 实例：拦截器（信封解包）、错误处理、Token 刷新
+|   |   +-- types.ts            # 通用 API 响应类型定义（Envelope / PageData）
+|   |   +-- pager.ts            # 分页拉全辅助（fetchAllPages）
 |   |   +-- auth.ts
-|   |   +-- project.ts
+|   |   +-- subitem.ts          # 子项 CRUD + 用户授权
+|   |   +-- user.ts
 |   |   +-- device.ts
 |   |   +-- point.ts
-|   |   +-- data.ts             # 时序数据查询
+|   |   +-- sensor.ts
+|   |   +-- channel.ts
+|   |   +-- data.ts             # 时序数据查询（channel_id）
 |   |   +-- alert.ts
-|   |   +-- analysis.ts
-|   |   +-- model.ts            # 3D 模型文件操作
+|   |   +-- analysis.ts         # FFT 分析任务 + NPZ 结果下载
+|   |   +-- dashboard.ts        # 大屏统计
+|   |   +-- protocol.ts
+|   |   +-- model.ts            # 3D 模型文件操作（上传/GLB blob 下载）
+|   |   +-- platform.ts
+|   |   +-- setup.ts
 |   |
 |   +-- views/                  # 页面级组件，与路由一一对应
 |   |   +-- Login.vue           # 登录页（独立布局，无侧边栏）
 |   |   +-- Dashboard/          # 数据大屏（核心页面）
-|   |   |   +-- Index.vue       # 布局容器：3D 场景 + 侧边数据面板 + 底部图表面板
-|   |   |   +-- Scene3D.vue     # Three.js 场景封装（仅负责 3D 渲染）
-|   |   |   +-- PointPanel.vue  # 测点信息悬浮/侧边面板
-|   |   |   +-- AlertBanner.vue # 顶部告警滚动条
+|   |   |   +-- Index.vue       # 布局容器：统计卡片 + 3D 场景 + 侧边通道面板 + 底部图表面板
+|   |   |   +-- Scene3D.vue     # Three.js 场景封装（模型鉴权下载 + channelPointMap 实时变色）
+|   |   |   +-- PointPanel.vue  # 通道列表侧边面板（channel_code + 最新值 + 状态色）
 |   |   |   +-- ChartStrip.vue  # 底部实时曲线条带
 |   |   +-- Analysis/           # 数据分析
 |   |   |   +-- Index.vue
-|   |   |   +-- RealTime.vue    # 实时监测：多测点并行曲线
+|   |   |   +-- RealTime.vue    # 实时监测：多通道并行曲线
 |   |   |   +-- History.vue     # 历史查询：时间范围选择 + 聚合间隔 + 导出
-|   |   |   +-- Spectrum.vue    # 频谱分析结果展示
+|   |   |   +-- Spectrum.vue    # 频谱分析：FFT 任务 + NPZ 解析 + 结果摘要回退
+|   |   |   +-- AlertLog.vue    # 预警日志：/alerts 列表 + 确认处理
 |   |   +-- Admin/              # 管理后台
-|   |       +-- UserManage.vue
-|   |       +-- ProjectManage.vue
-|   |       +-- DeviceManage.vue
-|   |       +-- PointManage.vue   # 测点管理：含三维坐标拾取器
-|   |       +-- AlertRule.vue     # 告警规则配置
+|   |       +-- SubItemManage.vue  # 子项管理：CRUD + 授权对话框
+|   |       +-- DeviceManage.vue   # 设备管理：协议下拉取 /protocols
+|   |       +-- PointManage.vue    # 测点管理：子项→设备级联 + 三维坐标拾取器
+|   |       +-- SensorManage.vue   # 传感器管理：子项→设备→测点级联
+|   |       +-- ChannelManage.vue  # 通道管理：四级级联 + alert_rules JSON 编辑
+|   |       +-- UserManage.vue     # 用户管理：CRUD + 重置密码
+|   |       +-- PluginManage.vue   # 协议适配器 + 分析插件说明
+|   |       +-- LogManage.vue      # 日志管理（占位）
 |   |
 |   +-- components/             # 可复用业务组件（非页面级）
 |   |   +-- ThreeScene/         # Three.js 核心封装（与技术无关的纯 3D 逻辑）
@@ -106,18 +117,24 @@ frontend/
 |   +-- types/                  # 全局 TypeScript 类型定义
 |   |   +-- index.ts            # 统一导出
 |   |   +-- user.ts
-|   |   +-- device.ts
+|   |   +-- subitem.ts          # Subitem, SubitemLocation
+|   |   +-- device.ts           # Device, DeviceStatus
 |   |   +-- point.ts            # Point, PointPosition, PointStatus...
-|   |   +-- data.ts             # TimeSeriesItem, DataPoint...
-|   |   +-- alert.ts
-|   |   +-- three.ts            # Three.js 扩展类型（如 CustomMesh）
+|   |   +-- sensor.ts           # Sensor
+|   |   +-- channel.ts          # Channel, AlertRule
+|   |   +-- alert.ts            # Alert, AlertLevel
+|   |   +-- analysis.ts         # AnalysisJob, JobStatus, ResultSummary, SpectrumData
+|   |   +-- model.ts            # ModelInfo, ModelStatus
+|   |   +-- platform.ts         # PlatformInfo
+|   |   +-- protocol.ts         # ProtocolInfo
+|   |   +-- setup.ts            # SetupStatus, InitAdminResponse
+|   |   +-- data.ts             # TimeSeriesItem, TimeseriesResponse, LatestValue, WsMessage
 |   |
 |   +-- utils/                  # 纯工具函数，无 Vue 依赖
 |   |   +-- auth.ts             # JWT 解析、过期检查
 |   |   +-- format.ts           # 数值格式化、时间格式化、单位换算
 |   |   +-- color.ts            # 状态颜色映射：normal/warning/danger
-|   |   +-- three-helpers.ts    # Three.js 辅助：射线检测、坐标转换
-|   |   +-- validators.ts       # 表单校验规则
+|   |   +-- npy.ts              # 轻量 NPY 读取器（float64/float32 一维，FFT 频谱解析）
 |   |
 |   +-- assets/                 # 静态资源
 |   |   +-- styles/
@@ -199,12 +216,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const isConnected = ref(false)
   const latestData = ref<Record<number, DataMessage>>({})
   const unreadAlerts = ref<AlertMessage[]>([])
-  const currentProjectId = ref<number | null>(null)
+  const currentSubitemId = ref<number | null>(null)
 
   // 只暴露必要的状态，内部逻辑封装
-  const connect = (token: string, projectId: number) => { /* ... */ }
+  const connect = (token: string, subitemId: number) => { /* ... */ }
   const disconnect = () => { /* ... */ }
-  const subscribeProject = (projectId: number) => { /* ... */ }
+  const subscribeSubitem = (subitemId: number) => { /* ... */ }
 
   return {
     isConnected: readonly(isConnected),
@@ -686,8 +703,8 @@ export function useWebSocket() {
     if (heartbeatTimer) clearInterval(heartbeatTimer)
   }
 
-  const subscribeProject = (projectId: number) => {
-    send({ type: 'cmd:subscribe', project_id: projectId })
+  const subscribeSubitem = (subitemId: number) => {
+    send({ type: 'cmd:subscribe', subitem_id: subitemId })
   }
 
   const send = (data: object) => {
@@ -697,16 +714,20 @@ export function useWebSocket() {
   }
 
   // 消息分发：通过 Pinia store 或 EventBus 解耦
+  // 注意：后端无心跳/pong，不发送 ping
   const handleMessage = (msg: any) => {
     switch (msg.type) {
       case 'data:realtime':
-        // 更新 dashboard store
+        // 更新 dashboard store（payload: channel_id/device_code/channel_code/value/unit/quality/timestamp）
         break
       case 'data:alert':
-        // 播放告警音 + 弹窗
+        // 活跃告警列表 + ElNotification（payload 含 status: triggered|updated|resolved）
         break
-      case 'pong':
-        // 心跳响应
+      case 'cmd:subscribed':
+        // 记录当前订阅 subitem_id
+        break
+      case 'cmd:error':
+        // 订阅被拒绝（如 FORBIDDEN），连接保持打开
         break
     }
   }
@@ -866,13 +887,13 @@ import { useUserStore } from '@/stores/user'
 
 const props = defineProps<{
   role?: string        // 'admin' | 'user'
-  projectId?: number   // 检查用户是否有该项目权限
+  subitemId?: number   // 检查用户是否有该子项权限
 }>()
 
 const userStore = useUserStore()
 const hasPermission = computed(() => {
   if (props.role && userStore.role !== props.role) return false
-  if (props.projectId && !userStore.projectIds.includes(props.projectId)) return false
+  // 子项权限列表由后端校验，前端仅提示
   return true
 })
 </script>

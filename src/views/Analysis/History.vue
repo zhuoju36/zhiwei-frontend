@@ -8,7 +8,7 @@ import type { TimeInterval, TimeSeriesItem } from '@/types'
 
 const dashboardStore = useDashboardStore()
 
-const pointId = ref<number | string>('')
+const channelId = ref<number | string>('')
 const range = ref<[Date, Date]>([new Date(Date.now() - 3600_000), new Date()])
 const interval = ref<TimeInterval>('1m')
 const loading = ref(false)
@@ -18,9 +18,9 @@ const resultInfo = ref('')
 const intervalOptions: TimeInterval[] = ['raw', '100ms', '1s', '1m', '1h', '1d']
 
 async function query(): Promise<void> {
-  const pid = Number(pointId.value)
-  if (!Number.isInteger(pid) || pid <= 0) {
-    ElMessage.warning('请选择测点')
+  const cid = Number(channelId.value)
+  if (!Number.isInteger(cid) || cid <= 0) {
+    ElMessage.warning('请选择通道')
     return
   }
   if (!range.value || range.value.length !== 2) {
@@ -30,15 +30,15 @@ async function query(): Promise<void> {
   loading.value = true
   try {
     const res = await getTimeseries({
-      point_id: pid,
+      channel_id: cid,
       start: range.value[0].toISOString(),
       end: range.value[1].toISOString(),
       interval: interval.value,
     })
     rows.value = res.data
-    resultInfo.value = `${dashboardStore.pointName(res.point_id)}，间隔 ${res.interval}，共 ${res.data.length} 条`
+    resultInfo.value = `${dashboardStore.channelName(res.channel_id)}，间隔 ${res.interval}，共 ${res.data.length} 条`
   } catch {
-    // 错误提示由请求拦截器统一处理（含 503 AGGREGATE_NOT_READY）
+    // 错误提示由请求拦截器统一处理
     rows.value = []
     resultInfo.value = ''
   } finally {
@@ -50,20 +50,20 @@ async function query(): Promise<void> {
 <template>
   <div class="history-page">
     <el-form inline class="query-form">
-      <el-form-item label="测点">
+      <el-form-item label="通道">
         <el-select
-          v-model="pointId"
+          v-model="channelId"
           filterable
           allow-create
           default-first-option
-          placeholder="选择测点，或输入测点 ID"
-          class="point-select"
+          placeholder="选择通道，或输入通道 ID"
+          class="channel-select"
         >
           <el-option
-            v-for="p in dashboardStore.points"
-            :key="p.id"
-            :label="`${p.point_name}（#${p.id}）`"
-            :value="p.id"
+            v-for="c in dashboardStore.channels"
+            :key="c.id"
+            :label="`${c.channel_code}（#${c.id}）`"
+            :value="c.id"
           />
         </el-select>
       </el-form-item>
@@ -124,7 +124,7 @@ async function query(): Promise<void> {
   border-radius: 4px;
 }
 
-.point-select {
+.channel-select {
   width: 220px;
 }
 

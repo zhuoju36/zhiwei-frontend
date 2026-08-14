@@ -5,8 +5,8 @@ import { useDashboardStore } from '@/stores/dashboard'
 
 const dashboardStore = useDashboardStore()
 
-const pointIds = computed<number[]>(() =>
-  dashboardStore.selectedPointId != null ? [dashboardStore.selectedPointId] : [],
+const channelIds = computed<number[]>(() =>
+  dashboardStore.selectedChannelId != null ? [dashboardStore.selectedChannelId] : [],
 )
 </script>
 
@@ -14,12 +14,12 @@ const pointIds = computed<number[]>(() =>
   <div class="chart-strip">
     <div class="strip-title">
       实时曲线
-      <span v-if="dashboardStore.selectedPointId != null" class="strip-sub">
-        测点 #{{ dashboardStore.selectedPointId }}（近 1 小时 + 实时追加）
+      <span v-if="dashboardStore.selectedChannelId != null" class="strip-sub">
+        {{ dashboardStore.channelName(dashboardStore.selectedChannelId) }}（近 1 小时 + 实时追加）
       </span>
-      <span v-else class="strip-sub">在右侧点击测点查看曲线</span>
+      <span v-else class="strip-sub">在右侧点击通道查看曲线</span>
     </div>
-    <TimeSeries :point-ids="pointIds" :minutes="60" live height="222px" />
+    <TimeSeries :channel-ids="channelIds" :minutes="60" live height="222px" />
   </div>
 </template>
 

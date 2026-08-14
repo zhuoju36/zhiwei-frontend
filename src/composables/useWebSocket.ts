@@ -12,7 +12,7 @@ const MAX_RECONNECT_DELAY = 30_000
  */
 export function useWebSocket(
   onMessage: (msg: WsMessage) => void,
-  getProjectId: () => number | null,
+  getSubitemId: () => number | null,
 ) {
   const isConnected = ref(false)
   let ws: WebSocket | null = null
@@ -59,10 +59,10 @@ export function useWebSocket(
     ws.onopen = () => {
       isConnected.value = true
       reconnectAttempts = 0
-      // 连接（含重连）后立即订阅当前项目
-      const pid = getProjectId()
-      if (pid != null) {
-        send({ type: 'cmd:subscribe', project_id: pid })
+      // 连接（含重连）后立即订阅当前子项
+      const sid = getSubitemId()
+      if (sid != null) {
+        send({ type: 'cmd:subscribe', subitem_id: sid })
       }
     }
 

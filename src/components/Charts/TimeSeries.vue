@@ -8,8 +8,8 @@ import type { TimeInterval, TimeSeriesItem } from '@/types'
 type SeriesPoint = [number, number]
 
 interface Props {
-  /** 参与绘图的测点 id 列表 */
-  pointIds: number[]
+  /** 参与绘图的通道 id 列表 */
+  channelIds: number[]
   /** 初始历史回溯时长（分钟），跨度 ≤60 分钟用 raw 档，否则 1m 档 */
   minutes?: number
   /** 是否把 WebSocket 实时值追加到曲线（滑动窗口） */
@@ -38,7 +38,7 @@ function itemToPoint(item: TimeSeriesItem): SeriesPoint | null {
 }
 
 async function fetchAll(): Promise<void> {
-  const ids = [...props.pointIds]
+  const ids = [...props.channelIds]
   if (ids.length === 0) {
     seriesMap.value = {}
     return
@@ -51,7 +51,7 @@ async function fetchAll(): Promise<void> {
     const results = await Promise.all(
       ids.map((id) =>
         getTimeseries({
-          point_id: id,
+          channel_id: id,
           start: start.toISOString(),
           end: end.toISOString(),
           interval,
@@ -71,17 +71,17 @@ async function fetchAll(): Promise<void> {
   }
 }
 
-watch(() => [props.pointIds, props.minutes], fetchAll, { immediate: true, deep: true })
+watch(() => [props.channelIds, props.minutes], fetchAll, { immediate: true, deep: true })
 
 // 实时追加：滑动窗口保留最近 MAX_LIVE_POINTS 点
 watch(
-  () => props.pointIds.map((id) => wsStore.latestData[id]),
+  () => props.channelIds.map((id) => wsStore.latestData[id]),
   (payloads) => {
     if (!props.live) return
     let changed = false
     const map: Record<number, SeriesPoint[]> = { ...seriesMap.value }
     payloads.forEach((p, i) => {
-      const id = props.pointIds[i]
+      const id = props.channelIds[i]
       if (!p) return
       const ts = new Date(p.timestamp).getTime()
       if (Number.isNaN(ts)) return
@@ -101,13 +101,13 @@ watch(
 const option = computed(() => ({
   animation: false,
   tooltip: { trigger: 'axis' },
-  legend: props.pointIds.length > 1 ? { top: 0 } : undefined,
-  grid: { left: 60, right: 20, top: props.pointIds.length > 1 ? 32 : 16, bottom: 24 },
+  legend: props.channelIds.length > 1 ? { top: 0 } : undefined,
+  grid: { left: 60, right: 20, top: props.channelIds.length > 1 ? 32 : 16, bottom: 24 },
   xAxis: { type: 'time' },
   yAxis: { type: 'value', scale: true },
   dataZoom: [{ type: 'inside' }],
-  series: props.pointIds.map((id) => ({
-    name: `测点 #${id}`,
+  series: props.channelIds.map((id) => ({
+    name: `通道 #${id}`,
     type: 'line',
     showSymbol: false,
     data: seriesMap.value[id] ?? [],
@@ -117,8 +117,8 @@ const option = computed(() => ({
 
 <template>
   <div v-loading="loading" class="time-series" :style="{ height }">
-    <v-chart v-if="pointIds.length" class="chart" :option="option" autoresize />
-    <el-empty v-else description="请选择测点" :image-size="60" />
+    <v-chart v-if="channelIds.length" class="chart" :option="option" autoresize />
+    <el-empty v-else description="请选择通道" :image-size="60" />
   </div>
 </template>
 

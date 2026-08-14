@@ -20,14 +20,14 @@ const activePath = computed(() => {
 })
 
 onMounted(() => {
-  if (dashboardStore.projects.length === 0) {
-    void dashboardStore.fetchProjects()
+  if (dashboardStore.subitems.length === 0) {
+    void dashboardStore.fetchSubitems()
   }
 })
 
-function onProjectChange(id: number): void {
-  dashboardStore.selectProject(id)
-  wsStore.subscribeProject(id)
+function onSubitemChange(id: number): void {
+  dashboardStore.selectSubitem(id)
+  wsStore.subscribeSubitem(id)
 }
 
 function logout(): void {
@@ -55,12 +55,12 @@ function logout(): void {
     </div>
     <div class="right">
       <el-select
-        :model-value="dashboardStore.currentProjectId"
-        placeholder="选择项目"
-        class="project-select"
-        @change="onProjectChange"
+        :model-value="dashboardStore.currentSubitemId"
+        placeholder="选择子项"
+        class="subitem-select"
+        @change="onSubitemChange"
       >
-        <el-option v-for="p in dashboardStore.projects" :key="p.id" :label="p.name" :value="p.id" />
+        <el-option v-for="s in dashboardStore.subitems" :key="s.id" :label="s.name" :value="s.id" />
       </el-select>
       <el-tag :type="wsStore.isConnected ? 'success' : 'info'" size="small">
         {{ wsStore.isConnected ? '实时已连接' : '实时未连接' }}
@@ -104,7 +104,7 @@ function logout(): void {
   gap: 12px;
 }
 
-.project-select {
+.subitem-select {
   width: 200px;
 }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell, Clock, Monitor, Setting, TrendCharts } from '@element-plus/icons-vue'
+import { Bell, Clock, Histogram, Monitor, Setting, TrendCharts } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
 
 const route = useRoute()
@@ -21,6 +21,10 @@ const activePath = computed(() => route.path)
           <el-menu-item index="/analysis/history">
             <el-icon><Clock /></el-icon>
             <span>历史查询</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/spectrum">
+            <el-icon><Histogram /></el-icon>
+            <span>频谱分析</span>
           </el-menu-item>
           <el-menu-item index="/analysis/evaluation">
             <el-icon><TrendCharts /></el-icon>

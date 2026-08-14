@@ -1,24 +1,49 @@
 import request from './request'
+import { fetchAllPages } from './pager'
 import type { PageData } from './types'
-import type { Point } from '@/types'
+import type { Point, PointPosition } from '@/types'
 
-const PAGE_SIZE = 200
-
-function fetchPage(projectId: number, page: number): Promise<PageData<Point>> {
-  // 响应拦截器已解包信封，第二泛型声明实际返回类型
-  return request.get<unknown, PageData<Point>>('/points', {
-    params: { project_id: projectId, page, size: PAGE_SIZE },
-  })
+/** subitem_id 与 device_id 至少传一个，否则 400 BAD_REQUEST */
+export function listPoints(params: {
+  subitem_id?: number
+  device_id?: number
+  page?: number
+  size?: number
+}): Promise<PageData<Point>> {
+  return request.get<unknown, PageData<Point>>('/points', { params })
 }
 
-/** 拉取项目全部测点（total 超过单页 size 时自动翻页拉完） */
-export async function listPoints(projectId: number): Promise<Point[]> {
-  const first = await fetchPage(projectId, 1)
-  if (first.total <= first.items.length) return first.items
+/** 拉取子项/设备下全部测点 */
+export function listAllPoints(filter: { subitem_id?: number; device_id?: number }): Promise<Point[]> {
+  return fetchAllPages((page) => listPoints({ ...filter, page }))
+}
 
-  const pages = Math.ceil(first.total / PAGE_SIZE)
-  const rest = await Promise.all(
-    Array.from({ length: pages - 1 }, (_, i) => fetchPage(projectId, i + 2)),
-  )
-  return [first, ...rest].flatMap((r) => r.items)
+export interface PointCreatePayload {
+  device_id: number
+  point_code: string
+  point_name?: string | null
+  point_type?: string | null
+  position?: PointPosition | null
+}
+
+/** PUT 为 PATCH 语义：字段可选 */
+export function createPoint(payload: PointCreatePayload): Promise<Point> {
+  return request.post<unknown, Point>('/points', payload)
+}
+
+export function updatePoint(
+  id: number,
+  payload: Partial<{
+    point_name: string | null
+    point_type: string | null
+    position: PointPosition
+    is_active: boolean
+  }>,
+): Promise<Point> {
+  return request.put<unknown, Point>(`/points/${id}`, payload)
+}
+
+/** 删除测点（仅 admin）→204 */
+export function deletePoint(id: number): Promise<void> {
+  return request.delete<unknown, void>(`/points/${id}`)
 }
