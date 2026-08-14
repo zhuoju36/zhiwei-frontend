@@ -24,7 +24,7 @@ const activePath = computed(() => route.path)
           </el-menu-item>
           <el-menu-item index="/analysis/spectrum">
             <el-icon><Histogram /></el-icon>
-            <span>频谱分析</span>
+            <span>分析任务</span>
           </el-menu-item>
           <el-menu-item index="/analysis/evaluation">
             <el-icon><TrendCharts /></el-icon>

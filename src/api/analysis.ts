@@ -34,11 +34,17 @@ export function getJob(id: number): Promise<AnalysisJob> {
 }
 
 /**
- * 下载分析结果 NPZ（application/octet-stream，非信封，需 JWT）。
+ * 下载分析结果附件（application/octet-stream，非信封，需 JWT）。
  * 不走 request 实例（避免信封解包拦截器），独立 axios 以 blob 接收。
  * 任务未完成时后端 409 ANALYSIS_RESULT_NOT_READY。
+ * 返回 blob 与 Content-Disposition 中的文件名（可能为 null）。
  */
-export async function getResultBlob(jobId: number): Promise<Blob> {
+export interface ArtifactFile {
+  blob: Blob
+  filename: string | null
+}
+
+export async function getResultBlob(jobId: number): Promise<ArtifactFile> {
   const token = useUserStore().token
   const res = await axios.get(
     `${import.meta.env.VITE_API_BASE_URL}/analysis/jobs/${jobId}/result`,
@@ -47,5 +53,7 @@ export async function getResultBlob(jobId: number): Promise<Blob> {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     },
   )
-  return res.data as Blob
+  const disposition = String(res.headers['content-disposition'] ?? '')
+  const match = /filename="?([^";]+)"?/.exec(disposition)
+  return { blob: res.data as Blob, filename: match?.[1] ?? null }
 }

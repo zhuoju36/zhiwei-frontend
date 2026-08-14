@@ -30,7 +30,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'spectrum',
         component: () => import('@/views/Analysis/Spectrum.vue'),
-        meta: { requiresAuth: true, title: '频谱分析' },
+        meta: { requiresAuth: true, title: '分析任务' },
       },
       {
         path: 'evaluation',

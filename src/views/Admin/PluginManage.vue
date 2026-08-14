@@ -56,6 +56,11 @@ onMounted(async () => {
         <el-table-column prop="version" label="版本" width="100" />
         <el-table-column prop="input_channels" label="通道数" width="90" />
         <el-table-column prop="min_samples" label="最少样本" width="100" />
+        <el-table-column label="结果视图" width="100">
+          <template #default="{ row }">
+            {{ row.result_view || (row.name === 'fft' ? 'fft' : 'generic') }}
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="说明" min-width="200" />
       </el-table>
     </el-card>
