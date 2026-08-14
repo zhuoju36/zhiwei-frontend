@@ -13,8 +13,10 @@ const userStore = useUserStore()
 const wsStore = useWebSocketStore()
 
 const activePath = computed(() => {
-  // 数据分析子路由统一高亮“数据分析”
-  return route.path.startsWith('/analysis') ? '/analysis/realtime' : route.path
+  // 数据分析/系统管理子路由统一高亮其入口
+  if (route.path.startsWith('/analysis')) return '/analysis/realtime'
+  if (route.path.startsWith('/admin')) return '/admin/points'
+  return route.path
 })
 
 onMounted(() => {
@@ -48,6 +50,7 @@ function logout(): void {
       >
         <el-menu-item index="/">数据大屏</el-menu-item>
         <el-menu-item index="/analysis/realtime">数据分析</el-menu-item>
+        <el-menu-item v-if="userStore.role === 'admin'" index="/admin/points">系统管理</el-menu-item>
       </el-menu>
     </div>
     <div class="right">

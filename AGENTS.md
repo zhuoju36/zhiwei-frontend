@@ -1,6 +1,6 @@
 # AGENTS.md - 前端开发规范与指南
 
-> **项目**：结构健康监测（SHM）平台前端  
+> **项目**：止危结构健康监测（SHM）平台前端  
 > **技术栈**：Vue 3.4 + Vite 5 + TypeScript 5.3 + Element Plus 2.7 + Three.js r160 + ECharts 5 + Pinia 2  
 > **核心约束**：**1000+ 测点实时渲染**、**WebSocket 高频数据流**、**IFC/OBJ 模型加载与测点绑定**
 > 全局架构详见 ../架构说明书.md

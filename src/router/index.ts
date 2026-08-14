@@ -14,6 +14,9 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !userStore.token) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
+  if (to.meta.requiresAdmin && userStore.role !== 'admin') {
+    return { path: '/' }
+  }
   if (to.path === '/login' && userStore.token) {
     return { path: '/' }
   }

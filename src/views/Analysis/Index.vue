@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { Bell, Clock, Monitor, Setting, TrendCharts } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
 
 const route = useRoute()
@@ -10,15 +11,35 @@ const activePath = computed(() => route.path)
 <template>
   <el-container class="analysis-page">
     <AppHeader />
-    <div class="sub-nav">
-      <el-menu mode="horizontal" :default-active="activePath" router :ellipsis="false">
-        <el-menu-item index="/analysis/realtime">实时监测</el-menu-item>
-        <el-menu-item index="/analysis/history">历史查询</el-menu-item>
-      </el-menu>
-    </div>
-    <el-main class="analysis-main">
-      <router-view />
-    </el-main>
+    <el-container class="analysis-body">
+      <el-aside width="200px" class="analysis-aside">
+        <el-menu :default-active="activePath" router class="aside-menu">
+          <el-menu-item index="/analysis/realtime">
+            <el-icon><Monitor /></el-icon>
+            <span>实时监测</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/history">
+            <el-icon><Clock /></el-icon>
+            <span>历史查询</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/evaluation">
+            <el-icon><TrendCharts /></el-icon>
+            <span>数据评估</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/alert-log">
+            <el-icon><Bell /></el-icon>
+            <span>预警日志</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/notify-setting">
+            <el-icon><Setting /></el-icon>
+            <span>通知设置</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      <el-main class="analysis-main">
+        <router-view />
+      </el-main>
+    </el-container>
   </el-container>
 </template>
 
@@ -29,19 +50,21 @@ const activePath = computed(() => route.path)
   flex-direction: column;
 }
 
-.sub-nav {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
-  padding: 0 16px;
+.analysis-body {
+  flex: 1;
+  min-height: 0;
+}
 
-  :deep(.el-menu) {
-    border-bottom: none;
+.analysis-aside {
+  background: #fff;
+  border-right: 1px solid #e4e7ed;
+
+  .aside-menu {
+    border-right: none;
   }
 }
 
 .analysis-main {
-  flex: 1;
-  min-height: 0;
   padding: 16px;
 }
 </style>
