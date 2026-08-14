@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SwitchButton } from '@element-plus/icons-vue'
+import { getPlatform } from '@/api/platform'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useUserStore } from '@/stores/user'
 import { useWebSocketStore } from '@/stores/websocket'
@@ -11,6 +12,9 @@ const router = useRouter()
 const dashboardStore = useDashboardStore()
 const userStore = useUserStore()
 const wsStore = useWebSocketStore()
+
+/** 平台名称（来自 platform_settings.platform_name，公开接口） */
+const platformName = ref('')
 
 const activePath = computed(() => {
   // 数据分析/系统管理子路由统一高亮其入口
@@ -23,6 +27,14 @@ onMounted(() => {
   if (dashboardStore.projects.length === 0) {
     void dashboardStore.fetchProjects()
   }
+  // 平台名称（失败保持默认文案）
+  getPlatform()
+    .then((p) => {
+      if (p.platform_name) platformName.value = p.platform_name
+    })
+    .catch(() => {
+      /* 静默 */
+    })
 })
 
 function onProjectChange(id: number): void {
@@ -40,7 +52,7 @@ function logout(): void {
 <template>
   <el-header class="app-header" height="56px">
     <div class="left">
-      <span class="logo">SHM 结构健康监测</span>
+      <span class="logo">{{ platformName || 'SHM 结构健康监测' }}</span>
       <el-menu
         mode="horizontal"
         :default-active="activePath"

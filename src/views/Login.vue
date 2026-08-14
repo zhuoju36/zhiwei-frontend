@@ -3,12 +3,16 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { getSetupStatus, initAdmin } from '@/api/setup'
+import { getPlatform } from '@/api/platform'
 import { useUserStore } from '@/stores/user'
 import type { PasswordRequirements } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+/** 平台名称（来自 platform_settings.platform_name，公开接口） */
+const platformName = ref('')
 
 /** 系统是否已初始化（未初始化时显示创建管理员向导） */
 const initialized = ref(true)
@@ -74,6 +78,14 @@ onMounted(async () => {
     // 初始化状态探测失败时按已初始化处理（后端不可达时提示登录失败）
   } finally {
     checking.value = false
+  }
+
+  // 平台名称（公开接口；失败保持默认文案，不阻断登录页）
+  try {
+    const platform = await getPlatform()
+    if (platform.platform_name) platformName.value = platform.platform_name
+  } catch {
+    /* 静默 */
   }
 })
 
@@ -164,7 +176,7 @@ async function onSetupSubmit(): Promise<void> {
     </el-card>
 
     <el-card v-else class="login-card">
-      <h2 class="login-title">结构健康监测平台</h2>
+      <h2 class="login-title">{{ platformName || '结构健康监测平台' }}</h2>
       <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="onSubmit">
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" autofocus />
