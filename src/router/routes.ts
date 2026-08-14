@@ -86,6 +86,16 @@ export const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresAdmin: true, title: '用户管理' },
       },
       {
+        path: 'models',
+        component: () => import('@/views/Admin/ModelManage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '模型管理' },
+      },
+      {
+        path: 'platform',
+        component: () => import('@/views/Admin/PlatformSetting.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '平台设置' },
+      },
+      {
         path: 'plugins',
         component: () => import('@/views/Admin/PluginManage.vue'),
         meta: { requiresAuth: true, requiresAdmin: true, title: '插件管理' },

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Aim, Connection, Document, Files, Monitor, SetUp, User } from '@element-plus/icons-vue'
+import { Aim, Box, Connection, Document, Files, Monitor, SetUp, Setting, User } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
 
 const route = useRoute()
@@ -37,6 +37,14 @@ const activePath = computed(() => route.path)
           <el-menu-item index="/admin/users">
             <el-icon><User /></el-icon>
             <span>用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/models">
+            <el-icon><Box /></el-icon>
+            <span>模型管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/platform">
+            <el-icon><Setting /></el-icon>
+            <span>平台设置</span>
           </el-menu-item>
           <el-menu-item index="/admin/plugins">
             <el-icon><Connection /></el-icon>
