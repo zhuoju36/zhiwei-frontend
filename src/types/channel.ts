@@ -17,6 +17,7 @@ export interface Channel {
   sampling_rate: number
   position_offset: Record<string, unknown> | null
   axis: string | null
+  note: string | null
   alert_rules: AlertRule[] | null
   is_active: boolean
   created_at: string

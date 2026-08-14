@@ -69,6 +69,6 @@ export interface WsAlertPayload {
 export type WsMessage =
   | { type: 'data:realtime'; payload: RealtimePayload }
   | { type: 'data:alert'; payload: WsAlertPayload }
-  | { type: 'cmd:subscribed'; subitem_id: number }
-  | { type: 'cmd:error'; code: string; message: string; subitem_id: number }
+  | { type: 'cmd:subscribed'; project_id: number }
+  | { type: 'cmd:error'; code: string; message: string; project_id: number }
   | { type: string; [key: string]: unknown }

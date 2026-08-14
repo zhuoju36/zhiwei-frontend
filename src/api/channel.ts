@@ -24,6 +24,7 @@ export interface ChannelCreatePayload {
   sampling_rate?: number
   position_offset?: Record<string, unknown> | null
   axis?: string | null
+  note?: string | null
   alert_rules?: AlertRule[] | null
 }
 
@@ -40,6 +41,7 @@ export function updateChannel(
     sampling_rate: number
     position_offset: Record<string, unknown> | null
     axis: string | null
+    note: string | null
     alert_rules: AlertRule[]
     is_active: boolean
   }>,

@@ -6,24 +6,24 @@ import type { PageData } from './types'
 import type { ModelInfo } from '@/types'
 
 export function listModels(params: {
-  subitem_id: number
+  project_id: number
   page?: number
   size?: number
 }): Promise<PageData<ModelInfo>> {
   return request.get<unknown, PageData<ModelInfo>>('/models', { params })
 }
 
-/** 拉取子项下全部模型 */
-export function listAllModels(subitemId: number): Promise<ModelInfo[]> {
-  return fetchAllPages((page) => listModels({ subitem_id: subitemId, page }))
+/** 拉取项目下全部模型 */
+export function listAllModels(projectId: number): Promise<ModelInfo[]> {
+  return fetchAllPages((page) => listModels({ project_id: projectId, page }))
 }
 
 /** 上传模型（multipart，.obj/.stl/.ply/.gltf/.glb ≤200MB）→201 */
-export function uploadModel(subitemId: number, file: File): Promise<{ model_id: number; status: string }> {
+export function uploadModel(projectId: number, file: File): Promise<{ model_id: number; status: string }> {
   const form = new FormData()
   form.append('file', file)
   return request.post<unknown, { model_id: number; status: string }>(
-    `/models/${subitemId}/upload`,
+    `/models/${projectId}/upload`,
     form,
   )
 }

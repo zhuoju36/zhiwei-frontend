@@ -3,35 +3,32 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { createChannel, deleteChannel, listAllChannels, updateChannel } from '@/api/channel'
 import { listAllDevices } from '@/api/device'
-import { listAllPoints } from '@/api/point'
 import { listAllSensors } from '@/api/sensor'
-import { listAllSubitems } from '@/api/subitem'
+import { listAllProjects } from '@/api/project'
 import { formatTime } from '@/utils/format'
-import type { AlertRule, Channel, Device, Point, Sensor, Subitem } from '@/types'
+import type { AlertRule, Channel, Device, Project, Sensor } from '@/types'
 
 const loading = ref(false)
 const rows = ref<Channel[]>([])
 
-const subitems = ref<Subitem[]>([])
-const filterSubitemId = ref<number | null>(null)
+const projects = ref<Project[]>([])
+const filterProjectId = ref<number | null>(null)
 const devices = ref<Device[]>([])
 const filterDeviceId = ref<number | null>(null)
-const points = ref<Point[]>([])
-const filterPointId = ref<number | null>(null)
 const sensors = ref<Sensor[]>([])
 const filterSensorId = ref<number | null>(null)
 
-async function loadSubitems(): Promise<void> {
+async function loadProjects(): Promise<void> {
   try {
-    subitems.value = await listAllSubitems()
+    projects.value = await listAllProjects()
   } catch {
-    subitems.value = []
+    projects.value = []
   }
 }
 
 async function loadDevices(): Promise<void> {
   filterDeviceId.value = null
-  const id = filterSubitemId.value
+  const id = filterProjectId.value
   if (id == null) {
     devices.value = []
     return
@@ -43,29 +40,15 @@ async function loadDevices(): Promise<void> {
   }
 }
 
-async function loadPoints(): Promise<void> {
-  filterPointId.value = null
-  const deviceId = filterDeviceId.value
-  if (deviceId == null) {
-    points.value = []
-    return
-  }
-  try {
-    points.value = await listAllPoints({ device_id: deviceId })
-  } catch {
-    points.value = []
-  }
-}
-
 async function loadSensors(): Promise<void> {
   filterSensorId.value = null
-  const pointId = filterPointId.value
-  if (pointId == null) {
+  const deviceId = filterDeviceId.value
+  if (deviceId == null) {
     sensors.value = []
     return
   }
   try {
-    sensors.value = await listAllSensors(pointId)
+    sensors.value = await listAllSensors(deviceId)
   } catch {
     sensors.value = []
   }
@@ -87,12 +70,8 @@ async function load(): Promise<void> {
   }
 }
 
-watch(filterSubitemId, () => void loadDevices())
+watch(filterProjectId, () => void loadDevices())
 watch(filterDeviceId, () => {
-  void loadPoints()
-  void load()
-})
-watch(filterPointId, () => {
   void loadSensors()
   void load()
 })
@@ -112,6 +91,7 @@ const form = reactive({
   unit: '',
   sampling_rate: 1,
   axis: '',
+  note: '',
   alertRulesText: '',
 })
 
@@ -129,6 +109,7 @@ function openCreate(): void {
     unit: '',
     sampling_rate: 1,
     axis: '',
+    note: '',
     alertRulesText: '',
   })
   dialogVisible.value = true
@@ -143,6 +124,7 @@ function openEdit(row: Channel): void {
     unit: row.unit ?? '',
     sampling_rate: row.sampling_rate,
     axis: row.axis ?? '',
+    note: row.note ?? '',
     alertRulesText: row.alert_rules ? JSON.stringify(row.alert_rules, null, 2) : '',
   })
   dialogVisible.value = true
@@ -204,6 +186,7 @@ async function submit(): Promise<void> {
         unit: form.unit || null,
         sampling_rate: form.sampling_rate,
         axis: form.axis || null,
+        note: form.note || null,
         alert_rules: alertRules,
       })
       ElMessage.success('通道已创建')
@@ -213,6 +196,7 @@ async function submit(): Promise<void> {
         unit: form.unit || null,
         sampling_rate: form.sampling_rate,
         axis: form.axis || null,
+        note: form.note || null,
         alert_rules: alertRules ?? undefined,
       })
       ElMessage.success('通道已更新')
@@ -242,9 +226,9 @@ async function remove(row: Channel): Promise<void> {
 }
 
 onMounted(async () => {
-  await loadSubitems()
-  if (subitems.value.length > 0) {
-    filterSubitemId.value = subitems.value[0].id
+  await loadProjects()
+  if (projects.value.length > 0) {
+    filterProjectId.value = projects.value[0].id
   }
 })
 </script>
@@ -252,14 +236,11 @@ onMounted(async () => {
 <template>
   <div class="channel-page">
     <div class="toolbar">
-      <el-select v-model="filterSubitemId" placeholder="选择子项" class="filter-select">
-        <el-option v-for="s in subitems" :key="s.id" :label="s.name" :value="s.id" />
+      <el-select v-model="filterProjectId" placeholder="选择项目" class="filter-select">
+        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
       <el-select v-model="filterDeviceId" placeholder="选择设备" class="filter-select">
         <el-option v-for="d in devices" :key="d.id" :label="d.device_code" :value="d.id" />
-      </el-select>
-      <el-select v-model="filterPointId" placeholder="选择测点" class="filter-select">
-        <el-option v-for="p in points" :key="p.id" :label="p.point_code" :value="p.id" />
       </el-select>
       <el-select v-model="filterSensorId" placeholder="选择传感器" class="filter-select">
         <el-option v-for="s in sensors" :key="s.id" :label="s.sensor_code" :value="s.id" />
@@ -334,6 +315,9 @@ onMounted(async () => {
         </el-form-item>
         <el-form-item label="轴向">
           <el-input v-model="form.axis" maxlength="8" placeholder="可选，如 X/Y/Z" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.note" type="textarea" :rows="2" maxlength="512" placeholder="可选" />
         </el-form-item>
         <el-form-item label="告警规则">
           <el-input

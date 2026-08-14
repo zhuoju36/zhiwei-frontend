@@ -10,9 +10,9 @@ export interface PointVisual {
 }
 
 /**
- * 测点管理器：InstancedMesh 批量渲染（1000+ 测点性能关键），
+ * 测点管理器：InstancedMesh 批量渲染（1000+ 传感器标记性能关键），
  * 外加不可见代理 Mesh 做射线检测。
- * 本阶段无测点坐标数据源（后端 /points 未上线），代码就位待接入。
+ * 数据源：sensor.position 非空的传感器（pointId 即 sensor.id）。
  */
 export class PointManager {
   private scene: THREE.Scene

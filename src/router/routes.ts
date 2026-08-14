@@ -54,21 +54,16 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Admin/Index.vue'),
     meta: { requiresAuth: true, requiresAdmin: true, title: '系统管理' },
     children: [
-      { path: '', redirect: '/admin/points' },
+      { path: '', redirect: '/admin/projects' },
       {
-        path: 'subitems',
-        component: () => import('@/views/Admin/SubItemManage.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, title: '子项管理' },
+        path: 'projects',
+        component: () => import('@/views/Admin/ProjectManage.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true, title: '项目管理' },
       },
       {
         path: 'devices',
         component: () => import('@/views/Admin/DeviceManage.vue'),
         meta: { requiresAuth: true, requiresAdmin: true, title: '设备管理' },
-      },
-      {
-        path: 'points',
-        component: () => import('@/views/Admin/PointManage.vue'),
-        meta: { requiresAuth: true, requiresAdmin: true, title: '测点管理' },
       },
       {
         path: 'sensors',

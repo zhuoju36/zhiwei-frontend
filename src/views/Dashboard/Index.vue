@@ -27,7 +27,7 @@ const levelColor = (level: string): string => {
 }
 
 async function loadStats(): Promise<void> {
-  const id = dashboardStore.currentSubitemId
+  const id = dashboardStore.currentProjectId
   if (id == null) {
     stats.value = null
     return
@@ -44,19 +44,19 @@ async function loadStats(): Promise<void> {
 }
 
 onMounted(async () => {
-  await dashboardStore.fetchSubitems()
-  if (dashboardStore.currentSubitemId != null) {
-    wsStore.subscribeSubitem(dashboardStore.currentSubitemId)
+  await dashboardStore.fetchProjects()
+  if (dashboardStore.currentProjectId != null) {
+    wsStore.subscribeProject(dashboardStore.currentProjectId)
   } else {
     wsStore.connect()
   }
 })
 
-// 切换子项后重新订阅（后端不支持改订阅，需重连）并刷新统计
+// 切换项目后重新订阅（后端不支持改订阅，需重连）并刷新统计
 watch(
-  () => dashboardStore.currentSubitemId,
+  () => dashboardStore.currentProjectId,
   (id) => {
-    if (id != null) wsStore.subscribeSubitem(id)
+    if (id != null) wsStore.subscribeProject(id)
     void loadStats()
   },
 )

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import type { PointPosition } from '@/types'
+import type { Position3D } from '@/types'
 
 interface Props {
   /** 三维坐标；父组件打开对话框时应传入全新对象（null 时保持当前草稿不覆盖） */
-  modelValue: PointPosition | null
+  modelValue: Position3D | null
 }
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: PointPosition]
+  'update:modelValue': [value: Position3D]
 }>()
 
 // 本地草稿编辑，任一坐标变化即回传

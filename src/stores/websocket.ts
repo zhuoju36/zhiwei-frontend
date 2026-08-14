@@ -9,9 +9,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const latestData = ref<Record<number, RealtimePayload>>({})
   /** 从实时流中动态发现的通道 id（无通道列表 API） */
   const knownChannelIds = ref<number[]>([])
-  const subscribedSubitemId = ref<number | null>(null)
-  /** 期望订阅的子项（重连后自动恢复订阅） */
-  const desiredSubitemId = ref<number | null>(null)
+  const subscribedProjectId = ref<number | null>(null)
+  /** 期望订阅的项目（重连后自动恢复订阅） */
+  const desiredProjectId = ref<number | null>(null)
   /** 活跃告警（WS data:alert 推送；resolved 帧移除） */
   const alerts = ref<WsAlertPayload[]>([])
   /** 订阅被拒绝等 WS 错误记录 */
@@ -49,7 +49,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     } else if (msg.type === 'data:alert') {
       handleAlert((msg as { payload: WsAlertPayload }).payload)
     } else if (msg.type === 'cmd:subscribed') {
-      subscribedSubitemId.value = (msg as { subitem_id: number }).subitem_id
+      subscribedProjectId.value = (msg as { project_id: number }).project_id
     } else if (msg.type === 'cmd:error') {
       const err = msg as { code: string; message: string }
       // 订阅被拒绝（如 FORBIDDEN）；后端不关闭连接，保持现状等待
@@ -58,22 +58,22 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
-  const socket = useWebSocket(handleMessage, () => desiredSubitemId.value)
+  const socket = useWebSocket(handleMessage, () => desiredProjectId.value)
 
   function connect(): void {
     void socket.connect()
   }
 
   function disconnect(): void {
-    desiredSubitemId.value = null
-    subscribedSubitemId.value = null
+    desiredProjectId.value = null
+    subscribedProjectId.value = null
     socket.disconnect()
   }
 
-  /** 订阅子项实时数据；已连接且订阅不同子项时重连以改订阅 */
-  function subscribeSubitem(subitemId: number): void {
-    if (desiredSubitemId.value === subitemId && socket.isConnected.value) return
-    desiredSubitemId.value = subitemId
+  /** 订阅项目实时数据；已连接且订阅不同项目时重连以改订阅 */
+  function subscribeProject(projectId: number): void {
+    if (desiredProjectId.value === projectId && socket.isConnected.value) return
+    desiredProjectId.value = projectId
     if (socket.isConnected.value) {
       socket.reconnect()
     } else {
@@ -85,11 +85,11 @@ export const useWebSocketStore = defineStore('websocket', () => {
     isConnected: socket.isConnected,
     latestData: readonly(latestData),
     knownChannelIds: readonly(knownChannelIds),
-    subscribedSubitemId: readonly(subscribedSubitemId),
+    subscribedProjectId: readonly(subscribedProjectId),
     alerts: readonly(alerts),
     wsErrors: readonly(wsErrors),
     connect,
     disconnect,
-    subscribeSubitem,
+    subscribeProject,
   }
 })

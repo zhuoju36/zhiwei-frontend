@@ -15,19 +15,19 @@ const wsStore = useWebSocketStore()
 const activePath = computed(() => {
   // 数据分析/系统管理子路由统一高亮其入口
   if (route.path.startsWith('/analysis')) return '/analysis/realtime'
-  if (route.path.startsWith('/admin')) return '/admin/points'
+  if (route.path.startsWith('/admin')) return '/admin/projects'
   return route.path
 })
 
 onMounted(() => {
-  if (dashboardStore.subitems.length === 0) {
-    void dashboardStore.fetchSubitems()
+  if (dashboardStore.projects.length === 0) {
+    void dashboardStore.fetchProjects()
   }
 })
 
-function onSubitemChange(id: number): void {
-  dashboardStore.selectSubitem(id)
-  wsStore.subscribeSubitem(id)
+function onProjectChange(id: number): void {
+  dashboardStore.selectProject(id)
+  wsStore.subscribeProject(id)
 }
 
 function logout(): void {
@@ -50,17 +50,17 @@ function logout(): void {
       >
         <el-menu-item index="/">数据大屏</el-menu-item>
         <el-menu-item index="/analysis/realtime">数据分析</el-menu-item>
-        <el-menu-item v-if="userStore.role === 'admin'" index="/admin/points">系统管理</el-menu-item>
+        <el-menu-item v-if="userStore.role === 'admin'" index="/admin/projects">系统管理</el-menu-item>
       </el-menu>
     </div>
     <div class="right">
       <el-select
-        :model-value="dashboardStore.currentSubitemId"
-        placeholder="选择子项"
-        class="subitem-select"
-        @change="onSubitemChange"
+        :model-value="dashboardStore.currentProjectId"
+        placeholder="选择项目"
+        class="project-select"
+        @change="onProjectChange"
       >
-        <el-option v-for="s in dashboardStore.subitems" :key="s.id" :label="s.name" :value="s.id" />
+        <el-option v-for="p in dashboardStore.projects" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
       <el-tag :type="wsStore.isConnected ? 'success' : 'info'" size="small">
         {{ wsStore.isConnected ? '实时已连接' : '实时未连接' }}
@@ -104,7 +104,7 @@ function logout(): void {
   gap: 12px;
 }
 
-.subitem-select {
+.project-select {
   width: 200px;
 }
 

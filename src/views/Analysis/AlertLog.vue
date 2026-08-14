@@ -24,11 +24,11 @@ const levelTag = (level: string): 'info' | 'warning' | 'danger' =>
   level === 'danger' ? 'danger' : level === 'warning' ? 'warning' : 'info'
 
 async function load(): Promise<void> {
-  // 前端始终传 subitem_id（不传时后端不过滤、任何登录用户可见全量）
+  // 前端始终传 project_id（不传时后端不过滤、admin 可见全量）
   loading.value = true
   try {
     const res = await listAlerts({
-      subitem_id: dashboardStore.currentSubitemId ?? undefined,
+      project_id: dashboardStore.currentProjectId ?? undefined,
       level: query.level || undefined,
       is_resolved: query.isResolved === '' ? undefined : query.isResolved,
       start: query.range?.[0].toISOString(),
@@ -66,14 +66,14 @@ async function acknowledge(row: Alert): Promise<void> {
     await load()
   } catch (err) {
     if ((err as { response?: { status?: number } }).response?.status === 403) {
-      ElMessage.error('无权限处理该告警（需要子项 admin）')
+      ElMessage.error('无权限处理该告警（需要项目 admin）')
     }
   }
 }
 
 onMounted(async () => {
-  if (dashboardStore.subitems.length === 0) {
-    await dashboardStore.fetchSubitems()
+  if (dashboardStore.projects.length === 0) {
+    await dashboardStore.fetchProjects()
   }
   void load()
 })

@@ -4,24 +4,25 @@ import type { PageData } from './types'
 import type { Device, DeviceStatus } from '@/types'
 
 export function listDevices(params: {
-  subitem_id: number
+  project_id: number
   page?: number
   size?: number
 }): Promise<PageData<Device>> {
   return request.get<unknown, PageData<Device>>('/devices', { params })
 }
 
-/** 拉取子项下全部设备 */
-export function listAllDevices(subitemId: number): Promise<Device[]> {
-  return fetchAllPages((page) => listDevices({ subitem_id: subitemId, page }))
+/** 拉取项目下全部设备 */
+export function listAllDevices(projectId: number): Promise<Device[]> {
+  return fetchAllPages((page) => listDevices({ project_id: projectId, page }))
 }
 
 export interface DeviceCreatePayload {
-  subitem_id: number
+  project_id: number
   device_code: string
   device_name?: string | null
   protocol: string
   config?: Record<string, unknown>
+  note?: string | null
 }
 
 /** PUT 为 PATCH 语义：字段可选 */
@@ -37,6 +38,7 @@ export function updateDevice(
     config: Record<string, unknown>
     status: DeviceStatus
     last_seen: string
+    note: string | null
   }>,
 ): Promise<Device> {
   return request.put<unknown, Device>(`/devices/${id}`, payload)

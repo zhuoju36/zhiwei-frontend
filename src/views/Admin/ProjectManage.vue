@@ -3,23 +3,23 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import {
   assignUser,
-  createSubitem,
-  deleteSubitem,
-  getSubitems,
-  updateSubitem,
-  type SubitemPermission,
-} from '@/api/subitem'
+  createProject,
+  deleteProject,
+  getProjects,
+  updateProject,
+  type ProjectPermission,
+} from '@/api/project'
 import { listUsers } from '@/api/user'
 import { formatTime } from '@/utils/format'
-import type { Subitem, UserOut } from '@/types'
+import type { Project, UserOut } from '@/types'
 
 const loading = ref(false)
-const rows = ref<Subitem[]>([])
+const rows = ref<Project[]>([])
 const total = ref(0)
 const page = ref(1)
 const size = 20
 
-// 子项编辑
+// 项目编辑
 const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
@@ -33,13 +33,13 @@ const form = reactive({
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入子项名称', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
 }
 
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const res = await getSubitems(page.value, size)
+    const res = await getProjects(page.value, size)
     rows.value = res.items
     total.value = res.total
   } catch {
@@ -63,7 +63,7 @@ function openCreate(): void {
   dialogVisible.value = true
 }
 
-function openEdit(row: Subitem): void {
+function openEdit(row: Project): void {
   editingId.value = row.id
   Object.assign(form, {
     name: row.name,
@@ -88,11 +88,11 @@ async function submit(): Promise<void> {
   }
   try {
     if (editingId.value == null) {
-      await createSubitem(payload)
-      ElMessage.success('子项已创建')
+      await createProject(payload)
+      ElMessage.success('项目已创建')
     } else {
-      await updateSubitem(editingId.value, payload)
-      ElMessage.success('子项已更新')
+      await updateProject(editingId.value, payload)
+      ElMessage.success('项目已更新')
     }
     dialogVisible.value = false
     await load()
@@ -101,17 +101,17 @@ async function submit(): Promise<void> {
   }
 }
 
-async function remove(row: Subitem): Promise<void> {
+async function remove(row: Project): Promise<void> {
   try {
-    await ElMessageBox.confirm(`确定删除子项「${row.name}」？该操作不可恢复。`, '删除确认', {
+    await ElMessageBox.confirm(`确定删除项目「${row.name}」？该操作不可恢复。`, '删除确认', {
       type: 'warning',
     })
   } catch {
     return
   }
   try {
-    await deleteSubitem(row.id)
-    ElMessage.success('子项已删除')
+    await deleteProject(row.id)
+    ElMessage.success('项目已删除')
     await load()
   } catch {
     // 错误提示由请求拦截器统一处理
@@ -120,13 +120,13 @@ async function remove(row: Subitem): Promise<void> {
 
 // 授权对话框
 const assignVisible = ref(false)
-const assignSubitem = ref<Subitem | null>(null)
+const assignProject = ref<Project | null>(null)
 const assignForm = reactive({ user_id: undefined as number | undefined, permission: 'read' })
 const userOptions = ref<UserOut[]>([])
 const assignSubmitting = ref(false)
 
-async function openAssign(row: Subitem): Promise<void> {
-  assignSubitem.value = row
+async function openAssign(row: Project): Promise<void> {
+  assignProject.value = row
   assignForm.user_id = undefined
   assignForm.permission = 'read'
   assignVisible.value = true
@@ -139,15 +139,15 @@ async function openAssign(row: Subitem): Promise<void> {
 }
 
 async function submitAssign(): Promise<void> {
-  if (assignSubitem.value == null || assignForm.user_id == null) {
+  if (assignProject.value == null || assignForm.user_id == null) {
     ElMessage.warning('请选择用户')
     return
   }
   assignSubmitting.value = true
   try {
-    await assignUser(assignSubitem.value.id, {
+    await assignUser(assignProject.value.id, {
       user_id: assignForm.user_id,
-      permission: assignForm.permission as SubitemPermission,
+      permission: assignForm.permission as ProjectPermission,
     })
     ElMessage.success('授权成功')
     assignVisible.value = false
@@ -162,9 +162,9 @@ onMounted(() => void load())
 </script>
 
 <template>
-  <div class="subitem-page">
+  <div class="project-page">
     <div class="toolbar">
-      <el-button type="primary" @click="openCreate">新建子项</el-button>
+      <el-button type="primary" @click="openCreate">新建项目</el-button>
     </div>
 
     <el-table v-loading="loading" :data="rows" border>
@@ -204,10 +204,10 @@ onMounted(() => void load())
     />
 
     <!-- 编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editingId == null ? '新建子项' : '编辑子项'" width="480px">
+    <el-dialog v-model="dialogVisible" :title="editingId == null ? '新建项目' : '编辑项目'" width="480px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" maxlength="128" placeholder="子项名称" />
+          <el-input v-model="form.name" maxlength="128" placeholder="项目名称" />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="2" placeholder="可选" />
@@ -234,7 +234,7 @@ onMounted(() => void load())
     </el-dialog>
 
     <!-- 授权对话框 -->
-    <el-dialog v-model="assignVisible" :title="`授权访问 - ${assignSubitem?.name ?? ''}`" width="420px">
+    <el-dialog v-model="assignVisible" :title="`授权访问 - ${assignProject?.name ?? ''}`" width="420px">
       <el-form label-width="80px">
         <el-form-item label="用户">
           <el-select v-model="assignForm.user_id" filterable placeholder="选择用户" class="full-width">
@@ -263,7 +263,7 @@ onMounted(() => void load())
 </template>
 
 <style scoped lang="scss">
-.subitem-page {
+.project-page {
   display: flex;
   flex-direction: column;
   gap: 12px;

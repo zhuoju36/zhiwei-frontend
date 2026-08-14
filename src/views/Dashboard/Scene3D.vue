@@ -62,17 +62,17 @@ async function loadModel(id: number | null): Promise<void> {
   }
 }
 
-/** 把有坐标的测点交给 PointManager（子项切换时 clear 后重新 init） */
-function setupPoints(): void {
+/** 把有坐标的传感器交给 PointManager（项目切换时 clear 后重新 init；pointId 即 sensor.id） */
+function setupSensors(): void {
   if (!pointManager) return
-  const visuals: PointVisual[] = dashboardStore.points
-    .filter((p) => p.position != null)
-    .map((p) => {
-      // 实时值按通道推送：该测点任一通道的最新值（优先时间戳最新）
+  const visuals: PointVisual[] = dashboardStore.sensors
+    .filter((s) => s.position != null)
+    .map((s) => {
+      // 实时值按通道推送：该传感器任一通道的最新值（优先时间戳最新）
       let value = 0
       let status: PointStatus = 'normal'
       let latestTs = -1
-      const channelIds = dashboardStore.channelIdsByPoint[p.id] ?? []
+      const channelIds = dashboardStore.channelIdsBySensor[s.id] ?? []
       channelIds.forEach((cid) => {
         const rt = wsStore.latestData[cid]
         if (!rt) return
@@ -84,17 +84,17 @@ function setupPoints(): void {
         }
       })
       return {
-        pointId: p.id,
-        position: new THREE.Vector3(p.position!.x, p.position!.y, p.position!.z),
+        pointId: s.id,
+        position: new THREE.Vector3(s.position!.x, s.position!.y, s.position!.z),
         status,
         value,
-        name: p.point_name ?? p.point_code,
+        name: s.sensor_name ?? s.sensor_code,
       }
     })
   pointManager.initPoints(visuals)
 }
 
-/** 射线检测：点击测点选中其首个通道，与 PointPanel/底部曲线联动 */
+/** 射线检测：点击传感器选中其首个通道，与 PointPanel/底部曲线联动 */
 function setupInteraction(): void {
   if (!sceneManager) return
   raycaster = new THREE.Raycaster()
@@ -108,7 +108,7 @@ function setupInteraction(): void {
     raycaster.setFromCamera(mouse, sceneManager.getCamera())
     const point = pointManager.getPointByRay(raycaster)
     if (point) {
-      const channelIds = dashboardStore.channelIdsByPoint[point.pointId] ?? []
+      const channelIds = dashboardStore.channelIdsBySensor[point.pointId] ?? []
       if (channelIds.length > 0) {
         dashboardStore.selectChannel(channelIds[0])
       }
@@ -123,7 +123,7 @@ onMounted(() => {
   sceneManager.start()
   pointManager = new PointManager(sceneManager.getScene())
   setupInteraction()
-  setupPoints()
+  setupSensors()
   void loadModel(props.modelId)
 })
 
@@ -132,26 +132,26 @@ watch(
   (id) => void loadModel(id ?? null),
 )
 
-// 测点列表加载/子项切换后重建测点渲染
-watch(() => dashboardStore.points, setupPoints)
+// 传感器列表加载/项目切换后重建测点渲染
+watch(() => dashboardStore.sensors, setupSensors)
 
-// WebSocket 实时数据 → 经 channelPointMap 聚合到测点 → 更新测点颜色
+// WebSocket 实时数据 → 经 channelSensorMap 聚合到传感器 → 更新测点颜色
 watch(
   () => wsStore.latestData,
   (dataMap) => {
     if (!pointManager) return
-    const latestByPoint = new Map<number, { value: number; status: PointStatus; ts: number }>()
+    const latestBySensor = new Map<number, { value: number; status: PointStatus; ts: number }>()
     Object.values(dataMap).forEach((p) => {
-      const pointId = dashboardStore.channelPointMap[p.channel_id]
-      if (pointId == null) return
+      const sensorId = dashboardStore.channelSensorMap[p.channel_id]
+      if (sensorId == null) return
       const ts = new Date(p.timestamp).getTime()
-      const cur = latestByPoint.get(pointId)
+      const cur = latestBySensor.get(sensorId)
       if (cur == null || ts > cur.ts) {
-        latestByPoint.set(pointId, { value: p.value, status: qualityToStatus(p.quality), ts })
+        latestBySensor.set(sensorId, { value: p.value, status: qualityToStatus(p.quality), ts })
       }
     })
-    latestByPoint.forEach((v, pointId) => {
-      pointManager!.updatePoint(pointId, v.value, v.status)
+    latestBySensor.forEach((v, sensorId) => {
+      pointManager!.updatePoint(sensorId, v.value, v.status)
     })
   },
   { deep: true },

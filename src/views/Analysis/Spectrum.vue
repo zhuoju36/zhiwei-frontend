@@ -48,8 +48,8 @@ function propDescription(prop: Record<string, unknown>): string {
 }
 
 onMounted(async () => {
-  if (dashboardStore.subitems.length === 0) {
-    await dashboardStore.fetchSubitems()
+  if (dashboardStore.projects.length === 0) {
+    await dashboardStore.fetchProjects()
   }
   try {
     plugins.value = await listPlugins()

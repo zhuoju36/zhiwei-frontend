@@ -3,8 +3,8 @@ import type { PageData } from './types'
 import type { Alert, AlertLevel } from '@/types'
 
 export interface AlertListParams {
-  /** 前端始终传 subitem_id；不传时后端不过滤（任何登录用户可见全量） */
-  subitem_id?: number
+  /** 前端始终传 project_id；不传时后端不过滤（admin 可见全量） */
+  project_id?: number
   channel_id?: number
   level?: AlertLevel
   is_resolved?: boolean
@@ -24,7 +24,7 @@ export function getAlert(id: number): Promise<Alert> {
   return request.get<unknown, Alert>(`/alerts/${id}`)
 }
 
-/** 确认告警（需要子项 admin 权限；无权限后端 403 FORBIDDEN） */
+/** 确认告警（需要项目 admin 权限；无权限后端 403 FORBIDDEN） */
 export function acknowledgeAlert(id: number): Promise<Alert> {
   return request.post<unknown, Alert>(`/alerts/${id}/acknowledge`)
 }

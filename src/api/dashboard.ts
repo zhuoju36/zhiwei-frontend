@@ -7,19 +7,19 @@ export interface DashboardStats {
   alerts_24h: number
   by_level: Record<string, number>
   recent_alerts: Alert[]
-  subitem_id: number | null
+  project_id: number | null
 }
 
-export function getStats(subitemId?: number): Promise<DashboardStats> {
+export function getStats(projectId?: number): Promise<DashboardStats> {
   return request.get<unknown, DashboardStats>('/dashboard/stats', {
-    params: subitemId != null ? { subitem_id: subitemId } : {},
+    params: projectId != null ? { project_id: projectId } : {},
   })
 }
 
-export function getRecentAlerts(subitemId?: number, limit = 10): Promise<Alert[]> {
+export function getRecentAlerts(projectId?: number, limit = 10): Promise<Alert[]> {
   return request.get<unknown, Alert[]>('/dashboard/recent-alerts', {
     params: {
-      ...(subitemId != null ? { subitem_id: subitemId } : {}),
+      ...(projectId != null ? { project_id: projectId } : {}),
       limit,
     },
   })

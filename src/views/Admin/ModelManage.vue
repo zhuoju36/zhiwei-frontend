@@ -9,7 +9,7 @@ import type { ModelInfo } from '@/types'
 
 const dashboardStore = useDashboardStore()
 
-const subitemId = ref<number | null>(null)
+const projectId = ref<number | null>(null)
 const models = ref<ModelInfo[]>([])
 const loading = ref(false)
 const uploading = ref(false)
@@ -30,16 +30,16 @@ const statusMeta: Record<ModelInfo['status'], { text: string; type: 'info' | 'wa
 const hasInflight = computed(() => models.value.some((m) => m.status === 'pending' || m.status === 'processing'))
 
 onMounted(async () => {
-  if (dashboardStore.subitems.length === 0) {
-    await dashboardStore.fetchSubitems()
+  if (dashboardStore.projects.length === 0) {
+    await dashboardStore.fetchProjects()
   }
-  if (dashboardStore.subitems.length > 0) {
-    subitemId.value = dashboardStore.currentSubitemId ?? dashboardStore.subitems[0].id
+  if (dashboardStore.projects.length > 0) {
+    projectId.value = dashboardStore.currentProjectId ?? dashboardStore.projects[0].id
   }
 })
 
 watch(
-  subitemId,
+  projectId,
   () => {
     stopPolling()
     void loadModels()
@@ -64,13 +64,13 @@ function stopPolling(): void {
 }
 
 async function loadModels(): Promise<void> {
-  if (subitemId.value == null) {
+  if (projectId.value == null) {
     models.value = []
     return
   }
   loading.value = true
   try {
-    models.value = await listAllModels(subitemId.value)
+    models.value = await listAllModels(projectId.value)
   } catch {
     // 错误提示由请求拦截器统一处理
   } finally {
@@ -89,7 +89,7 @@ async function onFileChange(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file || subitemId.value == null) return
+  if (!file || projectId.value == null) return
   const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   if (!['obj', 'stl', 'ply', 'gltf', 'glb'].includes(ext)) {
     ElMessage.warning('仅支持 .obj/.stl/.ply/.gltf/.glb 格式')
@@ -97,7 +97,7 @@ async function onFileChange(event: Event): Promise<void> {
   }
   uploading.value = true
   try {
-    const res = await uploadModel(subitemId.value, file)
+    const res = await uploadModel(projectId.value, file)
     ElMessage.success(`模型已上传，任务 #${res.model_id} 等待转换`)
     await loadModels()
   } catch {
@@ -147,13 +147,13 @@ async function onDownload(row: ModelInfo): Promise<void> {
   <div class="model-page">
     <el-card shadow="never" class="filter-card">
       <el-form inline class="filter-form">
-        <el-form-item label="子项">
-          <el-select v-model="subitemId" class="subitem-select" placeholder="选择子项">
+        <el-form-item label="项目">
+          <el-select v-model="projectId" class="project-select" placeholder="选择项目">
             <el-option
-              v-for="s in dashboardStore.subitems"
-              :key="s.id"
-              :label="s.name"
-              :value="s.id"
+              v-for="p in dashboardStore.projects"
+              :key="p.id"
+              :label="p.name"
+              :value="p.id"
             />
           </el-select>
         </el-form-item>
@@ -173,7 +173,7 @@ async function onDownload(row: ModelInfo): Promise<void> {
     </el-card>
 
     <el-card shadow="never">
-      <el-table v-loading="loading" :data="models" border empty-text="该子项暂无模型">
+      <el-table v-loading="loading" :data="models" border empty-text="该项目暂无模型">
         <el-table-column prop="original_name" label="文件名" min-width="200" show-overflow-tooltip />
         <el-table-column prop="source_format" label="格式" width="90" />
         <el-table-column label="状态" width="110">
@@ -226,7 +226,7 @@ async function onDownload(row: ModelInfo): Promise<void> {
   }
 }
 
-.subitem-select {
+.project-select {
   width: 220px;
 }
 

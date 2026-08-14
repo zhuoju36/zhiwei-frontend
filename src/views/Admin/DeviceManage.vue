@@ -8,10 +8,10 @@ import {
   listDevices,
   updateDevice,
 } from '@/api/device'
-import { listAllSubitems } from '@/api/subitem'
+import { listAllProjects } from '@/api/project'
 import { listProtocols } from '@/api/protocol'
 import { formatTime } from '@/utils/format'
-import type { Device, ProtocolInfo, Subitem } from '@/types'
+import type { Device, Project, ProtocolInfo } from '@/types'
 
 const loading = ref(false)
 const rows = ref<Device[]>([])
@@ -19,29 +19,29 @@ const total = ref(0)
 const page = ref(1)
 const size = 20
 
-const subitems = ref<Subitem[]>([])
-const filterSubitemId = ref<number | null>(null)
+const projects = ref<Project[]>([])
+const filterProjectId = ref<number | null>(null)
 const protocols = ref<ProtocolInfo[]>([])
 const protocolNames = computed(() => protocols.value.map((p) => p.name))
 
-async function loadSubitems(): Promise<void> {
+async function loadProjects(): Promise<void> {
   try {
-    subitems.value = await listAllSubitems()
+    projects.value = await listAllProjects()
   } catch {
-    subitems.value = []
+    projects.value = []
   }
 }
 
 async function load(): Promise<void> {
-  const subitemId = filterSubitemId.value
-  if (subitemId == null) {
+  const projectId = filterProjectId.value
+  if (projectId == null) {
     rows.value = []
     total.value = 0
     return
   }
   loading.value = true
   try {
-    const res = await listDevices({ subitem_id: subitemId, page: page.value, size })
+    const res = await listDevices({ project_id: projectId, page: page.value, size })
     rows.value = res.items
     total.value = res.total
   } catch {
@@ -56,15 +56,16 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const form = reactive({
-  subitem_id: undefined as number | undefined,
+  project_id: undefined as number | undefined,
   device_code: '',
   device_name: '',
   protocol: '',
+  note: '',
   configText: '{}',
 })
 
 const rules = {
-  subitem_id: [{ required: true, message: '请选择所属子项', trigger: 'change' }],
+  project_id: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
   device_code: [{ required: true, message: '请输入设备编码', trigger: 'blur' }],
   protocol: [{ required: true, message: '请选择协议', trigger: 'change' }],
 }
@@ -72,10 +73,11 @@ const rules = {
 function openCreate(): void {
   editingId.value = null
   Object.assign(form, {
-    subitem_id: filterSubitemId.value ?? undefined,
+    project_id: filterProjectId.value ?? undefined,
     device_code: '',
     device_name: '',
     protocol: protocolNames.value[0] ?? '',
+    note: '',
     configText: '{}',
   })
   dialogVisible.value = true
@@ -84,10 +86,11 @@ function openCreate(): void {
 function openEdit(row: Device): void {
   editingId.value = row.id
   Object.assign(form, {
-    subitem_id: row.subitem_id,
+    project_id: row.project_id,
     device_code: row.device_code,
     device_name: row.device_name ?? '',
     protocol: row.protocol,
+    note: row.note ?? '',
     configText: row.config ? JSON.stringify(row.config, null, 2) : '{}',
   })
   dialogVisible.value = true
@@ -105,15 +108,16 @@ async function submit(): Promise<void> {
   }
   try {
     if (editingId.value == null) {
-      if (form.subitem_id == null) {
-        ElMessage.warning('请选择所属子项')
+      if (form.project_id == null) {
+        ElMessage.warning('请选择所属项目')
         return
       }
       await createDevice({
-        subitem_id: form.subitem_id,
+        project_id: form.project_id,
         device_code: form.device_code,
         device_name: form.device_name || null,
         protocol: form.protocol,
+        note: form.note || null,
         config,
       })
       ElMessage.success('设备已创建')
@@ -121,6 +125,7 @@ async function submit(): Promise<void> {
       await updateDevice(editingId.value, {
         device_name: form.device_name || null,
         protocol: form.protocol,
+        note: form.note || null,
         config,
       })
       ElMessage.success('设备已更新')
@@ -150,14 +155,14 @@ async function remove(row: Device): Promise<void> {
 }
 
 onMounted(async () => {
-  await loadSubitems()
+  await loadProjects()
   try {
     protocols.value = await listProtocols()
   } catch {
     protocols.value = []
   }
-  if (subitems.value.length > 0) {
-    filterSubitemId.value = subitems.value[0].id
+  if (projects.value.length > 0) {
+    filterProjectId.value = projects.value[0].id
   }
 })
 </script>
@@ -166,14 +171,14 @@ onMounted(async () => {
   <div class="device-page">
     <div class="toolbar">
       <el-select
-        v-model="filterSubitemId"
-        placeholder="选择子项"
+        v-model="filterProjectId"
+        placeholder="选择项目"
         class="filter-select"
         @change="() => { page = 1; void load() }"
       >
-        <el-option v-for="s in subitems" :key="s.id" :label="s.name" :value="s.id" />
+        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
-      <el-button type="primary" :disabled="filterSubitemId == null" @click="openCreate">
+      <el-button type="primary" :disabled="filterProjectId == null" @click="openCreate">
         新建设备
       </el-button>
     </div>
@@ -220,9 +225,9 @@ onMounted(async () => {
 
     <el-dialog v-model="dialogVisible" :title="editingId == null ? '新建设备' : '编辑设备'" width="520px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
-        <el-form-item label="所属子项" prop="subitem_id">
-          <el-select v-model="form.subitem_id" placeholder="选择子项" class="full-width">
-            <el-option v-for="s in subitems" :key="s.id" :label="s.name" :value="s.id" />
+        <el-form-item label="所属项目" prop="project_id">
+          <el-select v-model="form.project_id" placeholder="选择项目" class="full-width">
+            <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="设备编码" prop="device_code">
@@ -240,6 +245,9 @@ onMounted(async () => {
           <el-select v-model="form.protocol" placeholder="选择协议" class="full-width">
             <el-option v-for="name in protocolNames" :key="name" :label="name" :value="name" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.note" type="textarea" :rows="2" maxlength="512" placeholder="可选" />
         </el-form-item>
         <el-form-item label="config">
           <el-input v-model="form.configText" type="textarea" :rows="4" placeholder="{}" />

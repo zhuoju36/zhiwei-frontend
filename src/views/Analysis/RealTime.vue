@@ -14,11 +14,11 @@ const channelIds = computed<number[]>(() =>
 )
 
 onMounted(async () => {
-  if (dashboardStore.subitems.length === 0) {
-    await dashboardStore.fetchSubitems()
+  if (dashboardStore.projects.length === 0) {
+    await dashboardStore.fetchProjects()
   }
-  if (dashboardStore.currentSubitemId != null) {
-    wsStore.subscribeSubitem(dashboardStore.currentSubitemId)
+  if (dashboardStore.currentProjectId != null) {
+    wsStore.subscribeProject(dashboardStore.currentProjectId)
   } else {
     wsStore.connect()
   }
