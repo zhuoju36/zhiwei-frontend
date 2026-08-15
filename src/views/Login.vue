@@ -191,6 +191,8 @@ async function onSetupSubmit(): Promise<void> {
         </el-form-item>
       </el-form>
     </el-card>
+
+    <div class="login-footer">Powered by ZhiweiSHM</div>
   </div>
 </template>
 
@@ -201,6 +203,16 @@ async function onSetupSubmit(): Promise<void> {
   align-items: center;
   justify-content: center;
   background: #1a1a2e;
+}
+
+.login-footer {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #909399;
+  font-size: 12px;
 }
 
 .login-card {

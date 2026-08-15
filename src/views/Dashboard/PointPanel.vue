@@ -1,85 +1,118 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import ScrollBoard from '@kjgl77/datav-vue3'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useWebSocketStore } from '@/stores/websocket'
-import { UNKNOWN_COLOR, qualityColor } from '@/utils/color'
-import { formatTime, formatValue } from '@/utils/format'
+import { formatValue } from '@/utils/format'
+import type { Quality } from '@/types'
 
 const dashboardStore = useDashboardStore()
 const wsStore = useWebSocketStore()
 
-// 兜底：WS 实时流中出现但通道列表没有的 channel_id
-const fallbackIds = computed<number[]>(() =>
-  wsStore.knownChannelIds.filter((id) => !dashboardStore.channelMap.has(id)),
-)
-
-const totalCount = computed(() => dashboardStore.channels.length + fallbackIds.value.length)
-
-function onSelect(id: number): void {
-  dashboardStore.selectChannel(id)
+/**
+ * ScrollBoard 是单色文本滚动行，会丢失原 el-tag 的状态色。
+ * 这里把 quality（good/uncertain/bad）映射到中文短文本作为有意识的取舍。
+ */
+const QUALITY_LABEL: Record<Quality, string> = {
+  good: '良好',
+  uncertain: '不确定',
+  bad: '异常',
 }
+const NO_DATA_LABEL = '暂无数据'
+
+interface BoardRow {
+  channelId: number
+  cells: string[]
+}
+
+function qualityLabel(quality: Quality | undefined | null): string {
+  if (quality == null) return NO_DATA_LABEL
+  return QUALITY_LABEL[quality] ?? NO_DATA_LABEL
+}
+
+function padIndex(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+/**
+ * 通道列表（项目内已知）+ WS 兜底发现的 channel_id（列表外）
+ * 一并按 channel_id 升序拼装，保证 ScrollBoard 不打乱顺序。
+ */
+const rows = computed<BoardRow[]>(() => {
+  const list: BoardRow[] = []
+  dashboardStore.channels.forEach((c, idx) => {
+    const rt = wsStore.latestData[c.id]
+    list.push({
+      channelId: c.id,
+      cells: [
+        padIndex(idx + 1),
+        c.channel_code,
+        rt ? formatValue(rt.value, null, 2) : '-',
+        rt?.unit ?? c.unit ?? '',
+        `[${qualityLabel(rt?.quality)}]`,
+      ],
+    })
+  })
+  wsStore.knownChannelIds
+    .filter((id) => !dashboardStore.channelMap.has(id))
+    .forEach((id) => {
+      const rt = wsStore.latestData[id]
+      if (!rt) return
+      list.push({
+        channelId: id,
+        cells: [
+          padIndex(list.length + 1),
+          `${rt.device_code}/${rt.channel_code}`,
+          formatValue(rt.value, null, 2),
+          rt.unit ?? '',
+          `[${qualityLabel(rt.quality)}]`,
+        ],
+      })
+    })
+  // 保持稳定：按 channelId 升序展示（与原 PointPanel 一致）
+  list.sort((a, b) => a.channelId - b.channelId)
+  return list
+})
+
+const totalCount = computed(() => rows.value.length)
+
+/** 通道行点击：选中通道并触发大屏底部曲线联动 */
+function onClick(event: { row: string[]; rowIndex: number }): void {
+  const row = rows.value[event.rowIndex]
+  if (row) dashboardStore.selectChannel(row.channelId)
+}
+
+const boardConfig = computed(() => ({
+  header: ['序号', '通道', '最新值', '单位', '质量'],
+  data: rows.value.map((r) => r.cells),
+  rowNum: 10,
+  headerHeight: 32,
+  rowHeight: 32,
+  waitTime: 2000,
+  hoverPause: true,
+  index: false,
+  carousel: 'single' as const,
+  columnWidth: [50, 110, 80, 70, 80],
+  align: ['center', 'left', 'right', 'left', 'center'],
+  headerBGC: 'rgba(16,43,94,0.6)',
+  oddRowBGC: 'rgba(10,26,58,0.55)',
+  evenRowBGC: 'rgba(16,43,94,0.55)',
+}))
 </script>
 
 <template>
   <div v-loading="dashboardStore.channelsLoading" class="point-panel">
-    <div class="panel-title">实时通道（{{ totalCount }}）</div>
-    <el-empty v-if="totalCount === 0" description="暂无通道" :image-size="60" />
-    <div v-else class="point-list">
-      <div
-        v-for="c in dashboardStore.channels"
-        :key="c.id"
-        class="point-item"
-        :class="{ active: dashboardStore.selectedChannelId === c.id }"
-        @click="onSelect(c.id)"
-      >
-        <div class="point-head">
-          <span class="point-name">{{ c.channel_code }}</span>
-          <el-tag
-            size="small"
-            effect="dark"
-            :color="wsStore.latestData[c.id] ? qualityColor(wsStore.latestData[c.id].quality) : UNKNOWN_COLOR"
-            class="quality-tag"
-          >
-            {{ wsStore.latestData[c.id]?.quality ?? '暂无数据' }}
-          </el-tag>
-        </div>
-        <div class="point-sub">{{ c.channel_type || '未分类' }} · {{ c.sampling_rate }}Hz</div>
-        <div class="point-value">
-          <template v-if="wsStore.latestData[c.id]">
-            {{ formatValue(wsStore.latestData[c.id].value, wsStore.latestData[c.id].unit || c.unit) }}
-          </template>
-          <span v-else class="no-data">暂无数据</span>
-        </div>
-        <div v-if="wsStore.latestData[c.id]" class="point-time">
-          {{ formatTime(wsStore.latestData[c.id].timestamp) }}
-        </div>
-      </div>
-      <div
-        v-for="id in fallbackIds"
-        :key="id"
-        class="point-item"
-        :class="{ active: dashboardStore.selectedChannelId === id }"
-        @click="onSelect(id)"
-      >
-        <div class="point-head">
-          <span class="point-name">
-            {{ wsStore.latestData[id].device_code }}/{{ wsStore.latestData[id].channel_code }}
-          </span>
-          <el-tag
-            size="small"
-            effect="dark"
-            :color="qualityColor(wsStore.latestData[id].quality)"
-            class="quality-tag"
-          >
-            {{ wsStore.latestData[id].quality }}
-          </el-tag>
-        </div>
-        <div class="point-value">
-          {{ formatValue(wsStore.latestData[id].value, wsStore.latestData[id].unit) }}
-        </div>
-        <div class="point-time">{{ formatTime(wsStore.latestData[id].timestamp) }}</div>
-      </div>
+    <div class="panel-head">
+      <span class="panel-title">测点实时通道（{{ totalCount }}）</span>
+      <span class="quality-hint">质量映射：good 良好 / uncertain 不确定 / bad 异常</span>
     </div>
+    <div v-if="totalCount === 0" class="panel-empty">暂无通道</div>
+    <ScrollBoard
+      v-else
+      :config="boardConfig"
+      class="panel-board"
+      @click="onClick"
+    />
   </div>
 </template>
 
@@ -88,74 +121,39 @@ function onSelect(id: number): void {
   height: 100%;
   display: flex;
   flex-direction: column;
+  color: #d8e3ff;
+}
+
+.panel-head {
+  padding: 8px 4px 6px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.18);
 }
 
 .panel-title {
-  padding: 12px 16px;
+  font-size: 13px;
   font-weight: 600;
-  border-bottom: 1px solid #e4e7ed;
+  letter-spacing: 1px;
 }
 
-.point-list {
+.quality-hint {
+  font-size: 11px;
+  color: #8aa3c8;
+}
+
+.panel-empty {
+  margin-top: 16px;
+  text-align: center;
+  color: #8aa3c8;
+  font-size: 12px;
+}
+
+.panel-board {
   flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.point-item {
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #409eff;
-  }
-
-  &.active {
-    border-color: #409eff;
-    background: #ecf5ff;
-  }
-}
-
-.point-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.point-name {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.quality-tag {
-  border: none;
-  color: #fff;
-}
-
-.point-sub {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #909399;
-}
-
-.point-value {
-  margin-top: 4px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.no-data {
-  font-size: 13px;
-  font-weight: 400;
-  color: #909399;
-}
-
-.point-time {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #909399;
+  min-height: 0;
+  margin-top: 6px;
 }
 </style>

@@ -1,7 +1,7 @@
 {
   "name": "shm-frontend",
   "private": true,
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@kjgl77/datav-vue3": "^1.7.4",
     "axios": "^1.7.7",
     "echarts": "^5.5.1",
     "element-plus": "^2.7.8",

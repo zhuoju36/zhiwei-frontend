@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Box, Connection, Document, Files, Monitor, SetUp, Setting, User } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
+import AppFooter from '@/components/Common/AppFooter.vue'
 
 const route = useRoute()
 const activePath = computed(() => route.path)
@@ -56,6 +57,7 @@ const activePath = computed(() => route.path)
         <router-view />
       </el-main>
     </el-container>
+    <AppFooter />
   </el-container>
 </template>
 
