@@ -18,6 +18,16 @@ export const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: '/analysis/realtime' },
       {
+        path: 'project-map',
+        component: () => import('@/views/Analysis/ProjectMap.vue'),
+        meta: { requiresAuth: true, title: '项目地图' },
+      },
+      {
+        path: 'device-status',
+        component: () => import('@/views/Analysis/DeviceStatus.vue'),
+        meta: { requiresAuth: true, title: '设备状态' },
+      },
+      {
         path: 'realtime',
         component: () => import('@/views/Analysis/RealTime.vue'),
         meta: { requiresAuth: true, title: '实时监测' },

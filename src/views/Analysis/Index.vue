@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell, Clock, Histogram, Monitor, Setting, TrendCharts } from '@element-plus/icons-vue'
+import { Bell, Clock, Cpu, Histogram, Location, Monitor, Setting, TrendCharts } from '@element-plus/icons-vue'
 import AppHeader from '@/components/Common/AppHeader.vue'
 import AppFooter from '@/components/Common/AppFooter.vue'
 
@@ -15,6 +15,14 @@ const activePath = computed(() => route.path)
     <el-container class="analysis-body">
       <el-aside width="200px" class="analysis-aside">
         <el-menu :default-active="activePath" router class="aside-menu">
+          <el-menu-item index="/analysis/project-map">
+            <el-icon><Location /></el-icon>
+            <span>项目地图</span>
+          </el-menu-item>
+          <el-menu-item index="/analysis/device-status">
+            <el-icon><Cpu /></el-icon>
+            <span>设备状态</span>
+          </el-menu-item>
           <el-menu-item index="/analysis/realtime">
             <el-icon><Monitor /></el-icon>
             <span>实时监测</span>

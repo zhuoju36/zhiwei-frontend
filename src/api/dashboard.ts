@@ -1,5 +1,6 @@
 import request from './request'
 import type { Alert } from '@/types'
+import type { DashboardOverview } from '@/types/dashboard'
 
 /** GET /dashboard/stats 响应 data */
 export interface DashboardStats {
@@ -23,4 +24,9 @@ export function getRecentAlerts(projectId?: number, limit = 10): Promise<Alert[]
       limit,
     },
   })
+}
+
+/** GET /dashboard/overview：所有项目 + 设备状态聚合（一次拉完，避免前端循环查） */
+export function getOverview(): Promise<DashboardOverview> {
+  return request.get<unknown, DashboardOverview>('/dashboard/overview')
 }

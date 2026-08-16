@@ -10,6 +10,7 @@ import {
   type ProjectPermission,
 } from '@/api/project'
 import { listUsers } from '@/api/user'
+import CoordinateMapPicker, { type LatLng } from '@/components/Form/CoordinateMapPicker.vue'
 import { formatTime } from '@/utils/format'
 import type { Project, UserOut } from '@/types'
 
@@ -26,11 +27,10 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   name: '',
   description: '',
-  hasLocation: false,
-  lat: 0,
-  lng: 0,
-  address: '',
 })
+const locationEnabled = ref(false)
+const coordsInput = ref<LatLng | null>(null)
+const addressInput = ref('')
 
 const rules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -52,27 +52,25 @@ async function load(): Promise<void> {
 
 function openCreate(): void {
   editingId.value = null
-  Object.assign(form, {
-    name: '',
-    description: '',
-    hasLocation: false,
-    lat: 0,
-    lng: 0,
-    address: '',
-  })
+  Object.assign(form, { name: '', description: '' })
+  locationEnabled.value = false
+  coordsInput.value = null
+  addressInput.value = ''
   dialogVisible.value = true
 }
 
 function openEdit(row: Project): void {
   editingId.value = row.id
-  Object.assign(form, {
-    name: row.name,
-    description: row.description ?? '',
-    hasLocation: row.location != null,
-    lat: row.location?.lat ?? 0,
-    lng: row.location?.lng ?? 0,
-    address: row.location?.address ?? '',
-  })
+  Object.assign(form, { name: row.name, description: row.description ?? '' })
+  if (row.location) {
+    locationEnabled.value = true
+    coordsInput.value = { lat: row.location.lat, lng: row.location.lng }
+    addressInput.value = row.location.address ?? ''
+  } else {
+    locationEnabled.value = false
+    coordsInput.value = null
+    addressInput.value = ''
+  }
   dialogVisible.value = true
 }
 
@@ -82,9 +80,14 @@ async function submit(): Promise<void> {
   const payload = {
     name: form.name,
     description: form.description || null,
-    location: form.hasLocation
-      ? { lat: form.lat, lng: form.lng, address: form.address || null }
-      : null,
+    location:
+      locationEnabled.value && coordsInput.value
+        ? {
+            lat: coordsInput.value.lat,
+            lng: coordsInput.value.lng,
+            address: addressInput.value.trim() || null,
+          }
+        : null,
   }
   try {
     if (editingId.value == null) {
@@ -213,17 +216,14 @@ onMounted(() => void load())
           <el-input v-model="form.description" type="textarea" :rows="2" placeholder="可选" />
         </el-form-item>
         <el-form-item label="位置">
-          <el-switch v-model="form.hasLocation" />
+          <el-switch v-model="locationEnabled" />
         </el-form-item>
-        <template v-if="form.hasLocation">
-          <el-form-item label="纬度">
-            <el-input-number v-model="form.lat" :controls="false" placeholder="lat" />
-          </el-form-item>
-          <el-form-item label="经度">
-            <el-input-number v-model="form.lng" :controls="false" placeholder="lng" />
-          </el-form-item>
+        <template v-if="locationEnabled">
           <el-form-item label="地址">
-            <el-input v-model="form.address" placeholder="可选" />
+            <el-input v-model="addressInput" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="坐标">
+            <CoordinateMapPicker v-model="coordsInput" />
           </el-form-item>
         </template>
       </el-form>
