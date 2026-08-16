@@ -186,56 +186,70 @@ const recentAlertsConfig = computed(() => {
     </header>
     <el-container class="dashboard-main">
       <el-main v-loading="statsLoading" class="scene-area">
-        <!-- 顶部四块统计 -->
-        <div class="stats-row">
-          <BorderBox8 class="stat-box" :color="BORDER_COLOR">
-            <div class="stat-title">活跃告警</div>
-            <DigitalFlop :config="activeFlopConfig" class="stat-flop" />
-          </BorderBox8>
-          <BorderBox8 class="stat-box" :color="BORDER_COLOR">
-            <div class="stat-title">近 24h 告警</div>
-            <DigitalFlop :config="alerts24hFlopConfig" class="stat-flop" />
-          </BorderBox8>
-          <BorderBox8 class="stat-box" :color="BORDER_COLOR">
-            <div class="stat-title">告警分布</div>
-            <div class="stat-capsule">
-              <div v-for="item in capsuleItems" :key="item.name" class="capsule-row">
-                <span class="capsule-label" :style="{ color: item.color }">{{ item.name }}</span>
-                <div class="capsule-bar">
-                  <div class="capsule-fill" :style="{ width: item.width + '%', background: item.color }" />
+        <!-- 顶部四块统计：el-row 24 列分 4 块 -->
+        <el-row :gutter="12" class="stats-row">
+          <el-col :xs="12" :sm="12" :md="6" :lg="6">
+            <BorderBox8 class="stat-box" :color="BORDER_COLOR">
+              <div class="stat-title">活跃告警</div>
+              <DigitalFlop :config="activeFlopConfig" class="stat-flop" />
+            </BorderBox8>
+          </el-col>
+          <el-col :xs="12" :sm="12" :md="6" :lg="6">
+            <BorderBox8 class="stat-box" :color="BORDER_COLOR">
+              <div class="stat-title">近 24h 告警</div>
+              <DigitalFlop :config="alerts24hFlopConfig" class="stat-flop" />
+            </BorderBox8>
+          </el-col>
+          <el-col :xs="12" :sm="12" :md="6" :lg="6">
+            <BorderBox8 class="stat-box" :color="BORDER_COLOR">
+              <div class="stat-title">告警分布</div>
+              <div class="stat-capsule">
+                <div v-for="item in capsuleItems" :key="item.name" class="capsule-row">
+                  <span class="capsule-label" :style="{ color: item.color }">{{ item.name }}</span>
+                  <div class="capsule-bar">
+                    <div class="capsule-fill" :style="{ width: item.width + '%', background: item.color }" />
+                  </div>
+                  <span class="capsule-value">{{ item.value }}</span>
                 </div>
-                <span class="capsule-value">{{ item.value }}</span>
               </div>
-            </div>
-          </BorderBox8>
-          <BorderBox8 class="stat-box stat-box-wide" :color="BORDER_COLOR">
-            <div class="stat-title">最新告警</div>
-            <ScrollRankingBoard v-if="stats?.recent_alerts?.length" :config="recentAlertsConfig" class="stat-ranking" />
-            <div v-else class="stat-empty">暂无告警</div>
-          </BorderBox8>
-        </div>
+            </BorderBox8>
+          </el-col>
+          <el-col :xs="12" :sm="12" :md="6" :lg="6">
+            <BorderBox8 class="stat-box stat-box-wide" :color="BORDER_COLOR">
+              <div class="stat-title">最新告警</div>
+              <ScrollRankingBoard v-if="stats?.recent_alerts?.length" :config="recentAlertsConfig" class="stat-ranking" />
+              <div v-else class="stat-empty">暂无告警</div>
+            </BorderBox8>
+          </el-col>
+        </el-row>
 
-        <!-- 中央：左侧栏 + [3D + 实时曲线] + 右侧通道面板 -->
-        <div class="center-row">
-          <BorderBox8 class="sidebar-box" :color="BORDER_COLOR">
-            <SensorSidebar />
-          </BorderBox8>
-          <div class="middle-column">
-            <BorderBox8 class="scene-box" :color="BORDER_COLOR">
-              <div class="scene-head">
-                <span class="scene-title">三维数字孪生</span>
-                <span class="scene-tag">在线实时数据 · Powered by ZhiweiSHM</span>
-              </div>
-              <Scene3D :model-id="dashboardStore.currentModel?.id ?? null" class="scene-canvas" />
+        <!-- 中央布局：左 sidebar | 中 [3D+曲线] | 右通道面板 -->
+        <el-row :gutter="12" class="center-row">
+          <el-col :span="5" class="col-sidebar">
+            <BorderBox8 class="sidebar-box" :color="BORDER_COLOR">
+              <SensorSidebar />
             </BorderBox8>
-            <BorderBox8 class="chart-box" :color="BORDER_COLOR">
-              <ChartStrip />
+          </el-col>
+          <el-col :span="14" class="col-middle">
+            <div class="middle-column">
+              <BorderBox8 class="scene-box" :color="BORDER_COLOR">
+                <div class="scene-head">
+                  <span class="scene-title">三维数字孪生</span>
+                  <span class="scene-tag">在线实时数据 · Powered by ZhiweiSHM</span>
+                </div>
+                <Scene3D :model-id="dashboardStore.currentModel?.id ?? null" class="scene-canvas" />
+              </BorderBox8>
+              <BorderBox8 class="chart-box" :color="BORDER_COLOR">
+                <ChartStrip />
+              </BorderBox8>
+            </div>
+          </el-col>
+          <el-col :span="5" class="col-panel">
+            <BorderBox8 class="panel-box" :color="BORDER_COLOR">
+              <PointPanel />
             </BorderBox8>
-          </div>
-          <BorderBox8 class="panel-box" :color="BORDER_COLOR">
-            <PointPanel />
-          </BorderBox8>
-        </div>
+          </el-col>
+        </el-row>
       </el-main>
     </el-container>
     <AppFooter />
@@ -314,20 +328,30 @@ const recentAlertsConfig = computed(() => {
 
 .scene-area {
   padding: 8px 14px 6px;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
   background: linear-gradient(180deg, #0a1a3a 0%, #102b5e 100%);
   color: #d8e3ff;
 }
 
+.scene-area > .el-row {
+  margin-bottom: 12px;
+}
+.scene-area > .el-row:last-child {
+  margin-bottom: 0;
+}
+
 /* ===== 顶部四块统计 ===== */
 .stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1.4fr;
-  gap: 12px;
   flex-shrink: 0;
+}
+
+.stats-row .el-col {
+  display: flex;
+}
+.stats-row .el-col > .stat-box {
+  flex: 1;
+  width: 100%;
 }
 
 .stat-box {
@@ -431,12 +455,24 @@ const recentAlertsConfig = computed(() => {
   font-size: 12px;
 }
 
-/* ===== 中央：左侧栏 + 3D + 右侧面板 ===== */
+/* ===== 中央三列（el-row 高度填满剩余空间） ===== */
 .center-row {
   flex: 1;
   min-height: 0;
+}
+
+.center-row .el-col {
+  height: 100%;
   display: flex;
-  gap: 12px;
+}
+
+.center-row .el-col > * {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-box {
