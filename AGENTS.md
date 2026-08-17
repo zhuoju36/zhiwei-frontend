@@ -904,9 +904,132 @@ const hasPermission = computed(() => {
 
 ---
 
-## 7. 构建与部署
+## 7. 前端 ↔ 后端契约（API 契约规则）
 
-### 7.1 Dockerfile
+本节是对后端 OpenAPI 的"实地契约"。文档与 `docs/backend-api-issues*.md` 是同步的；后端修契约后必须同步更新本节。
+
+### 7.1 响应信封
+
+所有业务接口的 JSON 响应统一为：
+
+```typescript
+interface Envelope<T> { code: string; message: string; data: T | null; timestamp: string }
+```
+
+- `request.ts` 拦截器已解开信封，业务代码拿到的是 `data`。
+- 出错时 `data` 字段为 `null`，`code` 是稳定的业务错误码（`AUTH_ERROR` / `VALIDATION_ERROR` / `BAD_REQUEST` / `FORBIDDEN` / `NOT_FOUND` / `EMPTY_UPDATE` / `ALREADY_INITIALIZED` / `INTERNAL_ERROR` / ...）。
+- 4xx/5xx 不会回退到 FastAPI 默认的 `{detail: ...}`，后端全局异常处理已统一套信封。
+
+### 7.2 list 接口的分页结构
+
+`/projects` `/users` `/devices` `/sensors` `/channels` `/alerts` `/analysis/jobs` 返回的不是裸数组，而是：
+
+```typescript
+interface PageData<T> { total: number; page: number; size: number; items: T[] }
+```
+
+消费方式：
+
+```typescript
+import { fetchAllPages } from '@/api/pager'
+
+// 拉全：自动翻页
+const projects = await fetchAllProjects()  // 等价 fetchAllPages(getProjects)
+
+// 拉一页：直接读 .items
+const res = await getProjects(1, 20)
+rows.value = res.items
+total.value = res.total
+```
+
+`/dashboard/*` 接口不分页，直接返回领域对象（如 `DashboardOverview`、`DashboardStats`、`Alert[]`）。
+
+### 7.3 强制 scope 的 list 接口
+
+下列 list 接口缺必传 query 时返 `422 VALIDATION_ERROR`（已被 `tests/api/divergences.test.ts` 锁定）：
+
+| 端点 | 必传 | 缺时报错 |
+|---|---|---|
+| `GET /devices` | `project_id` | 422 VALIDATION_ERROR |
+| `GET /sensors` | `device_id` | 422 VALIDATION_ERROR |
+| `GET /channels` | `sensor_id` | 422 VALIDATION_ERROR |
+
+### 7.4 AlertRule 字段
+
+正确字段名（前端代码已在用，不要改回旧名）：
+
+```typescript
+interface AlertRule {
+  operator: 'gt' | 'lt' | 'ge' | 'le' | 'eq' | 'ne'  // ⚠️ 不是 comparator
+  threshold: number
+  level: 'info' | 'warning' | 'danger'                // ⚠️ 不是 error
+  message?: string
+  suppress_seconds: number                            // ⚠️ 不是 hold_seconds；默认 60
+}
+```
+
+`ChannelManage.vue` 的 `parseAlertRules` 已校验。
+
+### 7.5 PlatformInfo 字段
+
+```typescript
+interface PlatformInfo {
+  platform_name: string                                // ⚠️ 不是 name
+  contact_email: string | null
+  description: string | null
+  logo_url: string | null
+  updated_at: string
+  updated_by: number | null
+}
+```
+
+`PUT /platform` body 字段同样用 `platform_name` 等；空 body 返 `422 EMPTY_UPDATE`。
+
+### 7.6 LoginResponse 含完整档案
+
+后端登录/刷新响应同时含 token 与用户档案（2026-08-17 起的契约）：
+
+```typescript
+interface LoginResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  user_id: number
+  username: string
+  email: string | null
+  role: 'admin' | 'user'
+  is_active: boolean
+}
+```
+
+**前端直接读这些字段**，不要 `parseJwt` 解 token。`stores/user.ts` 已经把这套字段持久化到 `localStorage`（`shm_user_profile`），路由守卫用 `userStore.role === 'admin'` 判断；`utils/auth.ts:parseJwt` 已删除。
+
+`POST /setup/init-admin` 是唯一例外：不返回 `role/email/is_active`，前端构造 `role='admin', is_active=true, email=入参`。
+
+### 7.7 /data/ingest 是 API Key 鉴权
+
+- 鉴权方式：`X-API-Key` 请求头（OpenAPI security scheme `APIKeyHeader`），不是 Bearer JWT
+- **前端不调用此接口**；数据上行走 WSS 或后端采集服务
+- 误用 Bearer 调用会返 `401 AUTH_ERROR "API Key 无效"`
+
+### 7.8 错误状态码
+
+| 场景 | HTTP | code |
+|---|---|---|
+| 鉴权失败（缺 / 假 / 过期 token） | 401 | `AUTH_ERROR` |
+| admin-only 端点 user 调用 | 403 | `FORBIDDEN` |
+| 资源不存在 | 404 | `NOT_FOUND` |
+| 字段 / 参数校验失败 | 422 | `VALIDATION_ERROR` / `EMPTY_UPDATE` |
+| 业务硬约束冲突（重名、删最后一个 admin 等） | 409 | 对应业务码 |
+| 后端崩溃 | 500 | `INTERNAL_ERROR` |
+
+权限中间件应先于资源查找（user 越权调 `POST /alerts/{nonexistent}/acknowledge` 仍期望 403，而不是 404 —— 等后端把 001 残留修完即可，详见 `tests/api/rbac.test.ts`）。
+
+---
+
+## 8. 构建与部署
+
+### 8.1 Dockerfile
 
 ```dockerfile
 # 构建阶段
@@ -924,7 +1047,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
 
-### 7.2 Nginx 配置要点
+### 8.2 Nginx 配置要点
 
 ```nginx
 server {
@@ -970,7 +1093,7 @@ server {
 
 ---
 
-## 8. 常见反模式（禁止清单）
+## 9. 常见反模式（禁止清单）
 
 | 反模式 | 后果 | 正确做法 |
 |--------|------|----------|
