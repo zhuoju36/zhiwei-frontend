@@ -78,6 +78,7 @@ async function loadModel(id: number | null): Promise<void> {
 
     currentModel = model
     sceneManager.getScene().add(currentModel)
+    sceneManager.fitToModel(currentModel)
   } catch {
     if (myGen === loadGen) {
       // 仅当这次仍是当前请求时，才向用户报错；过期请求吞掉
