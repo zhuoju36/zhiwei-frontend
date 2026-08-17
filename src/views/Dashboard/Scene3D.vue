@@ -8,6 +8,7 @@ import { getModelFileBlob } from '@/api/model'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useWebSocketStore } from '@/stores/websocket'
 import { qualityToStatus } from '@/utils/color'
+import { buildSensorVisuals } from '@/utils/three/sensorVisuals'
 import type { PointStatus } from '@/types'
 
 interface Props {
@@ -104,32 +105,11 @@ async function loadModel(id: number | null): Promise<void> {
 /** 把有坐标的传感器交给 PointManager（项目切换时 clear 后重新 init；pointId 即 sensor.id） */
 function setupSensors(): void {
   if (!pointManager) return
-  const visuals: PointVisual[] = dashboardStore.sensors
-    .filter((s) => s.position != null)
-    .map((s) => {
-      // 实时值按通道推送：该传感器任一通道的最新值（优先时间戳最新）
-      let value = 0
-      let status: PointStatus = 'normal'
-      let latestTs = -1
-      const channelIds = dashboardStore.channelIdsBySensor[s.id] ?? []
-      channelIds.forEach((cid) => {
-        const rt = wsStore.latestData[cid]
-        if (!rt) return
-        const ts = new Date(rt.timestamp).getTime()
-        if (ts > latestTs) {
-          latestTs = ts
-          value = rt.value
-          status = qualityToStatus(rt.quality)
-        }
-      })
-      return {
-        pointId: s.id,
-        position: new THREE.Vector3(s.position!.x, s.position!.y, s.position!.z),
-        status,
-        value,
-        name: s.sensor_name ?? s.sensor_code,
-      }
-    })
+  const visuals = buildSensorVisuals(
+    dashboardStore.sensors,
+    dashboardStore.channelIdsBySensor,
+    wsStore.latestData,
+  )
   pointManager.initPoints(visuals)
 }
 
