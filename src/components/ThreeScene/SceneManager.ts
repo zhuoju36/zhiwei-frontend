@@ -177,8 +177,11 @@ export class SceneManager {
   }
 
   /**
-   * 在主画布左上角 viewport 内绘制 gizmo；
-   * 启用 scissor 让 gizmo 不影响主场景其它像素。
+   * 在主画布左上角 viewport 内绘制 gizmo。
+   * - 启用 scissor 把 gizmo 隔离在固定区域
+   * - 该区域 clear 成完全透明（alpha=0），不显主场景背景色
+   * - render gizmoScene（自身没 background），最后恢复 setClearColor / viewport /
+   *   scissor，避免影响下一帧主场景渲染
    */
   private renderGizmo(): void {
     const size = Math.min(
@@ -190,6 +193,11 @@ export class SceneManager {
     const x = margin
     const y = this.renderer.domElement.height - gizmoSize - margin
 
+    // 保存主场景 clearColor / scissor / viewport，避免 gizmo 渲染污染下一帧
+    const prevClear = new THREE.Color()
+    this.renderer.getClearColor(prevClear)
+    const prevAlpha = this.renderer.getClearAlpha()
+
     this.syncGizmoCamera()
     this.renderer.setScissorTest(true)
     this.renderer.setScissor(x, y, gizmoSize, gizmoSize)
@@ -197,6 +205,9 @@ export class SceneManager {
     this.renderer.setClearColor(0x000000, 0)
     this.renderer.clear(true, true, true)
     this.renderer.render(this.gizmoScene, this.gizmoCamera)
+
+    // 恢复主场景渲染状态（关键：setClearColor 是全局，必须还原）
+    this.renderer.setClearColor(prevClear, prevAlpha)
     this.renderer.setScissorTest(false)
     this.renderer.setViewport(0, 0, this.renderer.domElement.width, this.renderer.domElement.height)
     this.renderer.setScissor(0, 0, this.renderer.domElement.width, this.renderer.domElement.height)
