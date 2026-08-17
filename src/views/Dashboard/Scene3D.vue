@@ -33,11 +33,21 @@ let raycaster: THREE.Raycaster | null = null
 let clickHandler: ((event: MouseEvent) => void) | null = null
 
 /**
+ * 模型加载版本号：每次进入 loadModel 自增，用于识别"被新切换覆盖"的过期回调。
+ * 在 fetch blob 与 GLTFLoader.parse 之间任一阶段被打断时，结果直接丢弃：
+ * - 自创建的 objectURL 立即 revoke（避免旧的 blob 数据被新一次 fetch 释放）
+ * - 不写 store ref，避免旧模型闪烁到新场景
+ */
+let loadGen = 0
+
+/**
  * 模型文件接口需 JWT（非公开）：带 Authorization 的 blob 请求 → objectURL → GLTFLoader。
  * 拿到 objectURL 后立即 revoke，避免占用内存。
  */
 async function loadModel(id: number | null): Promise<void> {
   if (!sceneManager) return
+  const myGen = ++loadGen
+
   if (currentModel) {
     sceneManager.getScene().remove(currentModel)
     currentModel = null
@@ -49,16 +59,34 @@ async function loadModel(id: number | null): Promise<void> {
   let objectUrl: string | null = null
   try {
     const blob = await getModelFileBlob(id)
+    if (myGen !== loadGen) return // 被更新的切换覆盖，丢弃这次结果
+
     objectUrl = URL.createObjectURL(blob)
+    if (myGen !== loadGen) {
+      // 已经过期：URL 还没人用，立即 revoke
+      URL.revokeObjectURL(objectUrl)
+      return
+    }
+
     const loader = new ModelLoader()
-    currentModel = await loader.loadGLB(objectUrl)
+    const model = await loader.loadGLB(objectUrl)
+    if (myGen !== loadGen) {
+      // GLTFLoader 异步解析期间被覆盖，自己 add 前再确认一次
+      URL.revokeObjectURL(objectUrl)
+      return
+    }
+
+    currentModel = model
     sceneManager.getScene().add(currentModel)
   } catch {
-    // 模型加载失败不阻塞数据面板
-    modelError.value = '3D 模型加载失败，仅显示数据面板'
+    if (myGen === loadGen) {
+      // 仅当这次仍是当前请求时，才向用户报错；过期请求吞掉
+      modelError.value = '3D 模型加载失败，仅显示数据面板'
+    }
   } finally {
+    // 自己的 objectURL 总是 revoke，包括被覆盖的情况下
     if (objectUrl) URL.revokeObjectURL(objectUrl)
-    modelLoading.value = false
+    if (myGen === loadGen) modelLoading.value = false
   }
 }
 
