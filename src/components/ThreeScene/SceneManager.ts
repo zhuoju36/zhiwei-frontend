@@ -6,6 +6,26 @@ export interface SceneManagerOptions {
   enableDamping?: boolean
 }
 
+/** 在 canvas 上绘制一个 X/Y/Z 文字标签，返回 Sprite 用的 texture */
+function makeAxisLabel(text: string, color: string): THREE.Texture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')!
+  ctx.font = 'bold 40px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  // 描边 + 填充，确保任意背景下可读
+  ctx.lineWidth = 4
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)'
+  ctx.strokeText(text, 32, 32)
+  ctx.fillStyle = color
+  ctx.fillText(text, 32, 32)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.minFilter = THREE.LinearFilter
+  return tex
+}
+
 /**
  * 场景管理器：初始化、渲染循环、资源释放。
  * 纯 TS 类，Three.js 对象不进入 Vue 响应式系统。
@@ -17,6 +37,11 @@ export class SceneManager {
   private controls: OrbitControls
   private animationId = 0
   private resizeObserver: ResizeObserver | null = null
+
+  // 坐标系 gizmo（独立 mini scene + ortho camera，渲染到主画布左上角）
+  private gizmoScene: THREE.Scene
+  private gizmoCamera: THREE.OrthographicCamera
+  private gizmoGroup: THREE.Group
 
   constructor(private container: HTMLElement, options: SceneManagerOptions = {}) {
     // 场景
@@ -49,6 +74,14 @@ export class SceneManager {
     const grid = new THREE.GridHelper(40, 40, 0x334466, 0x223355)
     this.scene.add(grid)
 
+    // gizmo：mini scene + ortho camera，跟随主相机旋转
+    this.gizmoScene = new THREE.Scene()
+    this.gizmoCamera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10)
+    this.gizmoCamera.position.set(0, 0, 3)
+    this.gizmoCamera.lookAt(0, 0, 0)
+    this.gizmoGroup = this.buildGizmoGroup()
+    this.gizmoScene.add(this.gizmoGroup)
+
     // 容器尺寸响应
     this.resizeObserver = new ResizeObserver(() => this.onResize())
     this.resizeObserver.observe(container)
@@ -62,11 +95,119 @@ export class SceneManager {
     this.scene.add(directional)
   }
 
+  /** 构建 X/Y/Z 三轴 + 箭头 + 文字标签的 gizmo 组 */
+  private buildGizmoGroup(): THREE.Group {
+    const group = new THREE.Group()
+
+    // AxesHelper：红/绿/蓝三轴线段
+    const axes = new THREE.AxesHelper(0.85)
+    // AxesHelper 的子节点是 LineSegments，强制 depthTest=false 让它始终可见
+    axes.traverse((obj) => {
+      const ls = obj as THREE.LineSegments
+      if (ls.isLineSegments && ls.material instanceof THREE.LineBasicMaterial) {
+        ls.material.depthTest = false
+        ls.material.transparent = true
+        ls.renderOrder = 999
+      }
+    })
+    group.add(axes)
+
+    // 三轴箭头（圆锥 + 短杆）：增强视觉
+    const arrowSpecs: { axis: 'x' | 'y' | 'z'; color: number; dir: THREE.Vector3 }[] = [
+      { axis: 'x', color: 0xff5566, dir: new THREE.Vector3(1, 0, 0) },
+      { axis: 'y', color: 0x66ff88, dir: new THREE.Vector3(0, 1, 0) },
+      { axis: 'z', color: 0x6699ff, dir: new THREE.Vector3(0, 0, 1) },
+    ]
+    for (const spec of arrowSpecs) {
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 0.18),
+        new THREE.MeshBasicMaterial({ color: spec.color, depthTest: false }),
+      )
+      shaft.position.copy(spec.dir).multiplyScalar(0.85)
+      // Cylinder 默认沿 Y 轴，按 axis 方向旋转
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), spec.dir)
+      shaft.quaternion.copy(quat)
+      shaft.renderOrder = 999
+      group.add(shaft)
+
+      const tip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.1, 0.22),
+        new THREE.MeshBasicMaterial({ color: spec.color, depthTest: false }),
+      )
+      tip.position.copy(spec.dir).multiplyScalar(1.05)
+      tip.quaternion.copy(quat)
+      tip.renderOrder = 999
+      group.add(tip)
+    }
+
+    // 三轴文字标签 Sprite：确保深度测试不影响
+    const labelSpec: { text: string; color: string; pos: THREE.Vector3 }[] = [
+      { text: 'X', color: '#ff5566', pos: new THREE.Vector3(1.3, 0, 0) },
+      { text: 'Y', color: '#66ff88', pos: new THREE.Vector3(0, 1.3, 0) },
+      { text: 'Z', color: '#6699ff', pos: new THREE.Vector3(0, 0, 1.3) },
+    ]
+    for (const ls of labelSpec) {
+      const mat = new THREE.SpriteMaterial({
+        map: makeAxisLabel(ls.text, ls.color),
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+      })
+      const sprite = new THREE.Sprite(mat)
+      sprite.position.copy(ls.pos)
+      sprite.scale.set(0.45, 0.45, 0.45)
+      sprite.renderOrder = 999
+      group.add(sprite)
+    }
+
+    return group
+  }
+
+  /**
+   * 把 gizmo 同步到主相机当前方向：每帧从主相机位置 → target 方向
+   * 推出 gizmo 相机的视线，lookAt 始终 (0, 0, 0)，up 跟随主相机。
+   */
+  private syncGizmoCamera(): void {
+    const dir = this.camera.position.clone().sub(this.controls.target)
+    if (dir.lengthSq() < 1e-6) return
+    dir.normalize()
+    this.gizmoCamera.position.copy(dir).multiplyScalar(3)
+    this.gizmoCamera.up.copy(this.camera.up)
+    this.gizmoCamera.lookAt(0, 0, 0)
+  }
+
+  /**
+   * 在主画布左上角 viewport 内绘制 gizmo；
+   * 启用 scissor 让 gizmo 不影响主场景其它像素。
+   */
+  private renderGizmo(): void {
+    const size = Math.min(
+      this.renderer.domElement.width,
+      this.renderer.domElement.height,
+    )
+    const gizmoSize = Math.round(size * 0.14)
+    const margin = 12
+    const x = margin
+    const y = this.renderer.domElement.height - gizmoSize - margin
+
+    this.syncGizmoCamera()
+    this.renderer.setScissorTest(true)
+    this.renderer.setScissor(x, y, gizmoSize, gizmoSize)
+    this.renderer.setViewport(x, y, gizmoSize, gizmoSize)
+    this.renderer.setClearColor(0x000000, 0)
+    this.renderer.clear(true, true, true)
+    this.renderer.render(this.gizmoScene, this.gizmoCamera)
+    this.renderer.setScissorTest(false)
+    this.renderer.setViewport(0, 0, this.renderer.domElement.width, this.renderer.domElement.height)
+    this.renderer.setScissor(0, 0, this.renderer.domElement.width, this.renderer.domElement.height)
+  }
+
   start(): void {
     const animate = () => {
       this.animationId = requestAnimationFrame(animate)
       this.controls.update()
       this.renderer.render(this.scene, this.camera)
+      this.renderGizmo()
     }
     animate()
   }
@@ -75,6 +216,18 @@ export class SceneManager {
     cancelAnimationFrame(this.animationId)
     this.resizeObserver?.disconnect()
     this.controls.dispose()
+    // 释放 gizmo 资源
+    this.gizmoScene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh
+      if (mesh.isMesh) {
+        mesh.geometry?.dispose()
+        const mat = mesh.material
+        if (Array.isArray(mat)) mat.forEach((m) => m.dispose())
+        else mat?.dispose()
+      }
+      const sprite = obj as THREE.Sprite
+      if (sprite.isSprite) sprite.material?.dispose()
+    })
     this.renderer.dispose()
     this.container.removeChild(this.renderer.domElement)
   }
