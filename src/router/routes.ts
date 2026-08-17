@@ -16,7 +16,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Analysis/Index.vue'),
     meta: { requiresAuth: true, title: '数据分析' },
     children: [
-      { path: '', redirect: '/analysis/realtime' },
+      { path: '', redirect: '/analysis/project-map' },
       {
         path: 'project-map',
         component: () => import('@/views/Analysis/ProjectMap.vue'),

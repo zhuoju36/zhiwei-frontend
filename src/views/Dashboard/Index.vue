@@ -235,7 +235,6 @@ const recentAlertsConfig = computed(() => {
               <BorderBox8 class="scene-box" :color="BORDER_COLOR">
                 <div class="scene-head">
                   <span class="scene-title">三维数字孪生</span>
-                  <span class="scene-tag">在线实时数据 · Powered by ZhiweiSHM</span>
                 </div>
                 <Scene3D :model-id="dashboardStore.currentModel?.id ?? null" class="scene-canvas" />
               </BorderBox8>

@@ -18,7 +18,7 @@ const platformName = ref('')
 
 const activePath = computed(() => {
   // 数据分析/系统管理子路由统一高亮其入口
-  if (route.path.startsWith('/analysis')) return '/analysis/realtime'
+  if (route.path.startsWith('/analysis')) return '/analysis/project-map'
   if (route.path.startsWith('/admin')) return '/admin/projects'
   return route.path
 })
@@ -61,7 +61,7 @@ function logout(): void {
         class="nav"
       >
         <el-menu-item index="/">数据大屏</el-menu-item>
-        <el-menu-item index="/analysis/realtime">数据分析</el-menu-item>
+        <el-menu-item index="/analysis/project-map">数据分析</el-menu-item>
         <el-menu-item v-if="userStore.role === 'admin'" index="/admin/projects">系统管理</el-menu-item>
       </el-menu>
     </div>
