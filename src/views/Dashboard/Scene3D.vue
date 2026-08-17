@@ -87,9 +87,11 @@ async function loadModel(id: number | null): Promise<void> {
     applyWhiteMaterial(currentModel)
     sceneManager.getScene().add(currentModel)
     sceneManager.fitToModel(currentModel)
-  } catch {
+  } catch (err) {
     if (myGen === loadGen) {
       // 仅当这次仍是当前请求时，才向用户报错；过期请求吞掉
+      // eslint-disable-next-line no-console
+      console.error('[Scene3D] 模型加载失败:', err)
       modelError.value = '3D 模型加载失败，仅显示数据面板'
     }
   } finally {
@@ -208,6 +210,18 @@ onBeforeUnmount(() => {
 /** 视图切换按钮：摆正到前/左/俯三视图，保留当前 target 与距离 */
 function setView(direction: 'front' | 'left' | 'top'): void {
   sceneManager?.setView(direction)
+}
+
+/** 给模型所有 mesh 换成白色 Lambert 材质，呈现"白模"风格 */
+function applyWhiteMaterial(model: THREE.Object3D): void {
+  const white = new THREE.MeshLambertMaterial({ color: 0xffffff })
+  model.traverse((obj) => {
+    const mesh = obj as THREE.Mesh
+    if (mesh.isMesh) {
+      mesh.material = white
+      mesh.material.color.set(0xffffff) // 抵消 GLTF 自带 vertex color
+    }
+  })
 }
 </script>
 
