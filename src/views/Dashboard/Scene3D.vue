@@ -39,8 +39,8 @@ let pointManager: PointManager | null = null
 let currentModel: THREE.Group | null = null
 let raycaster: THREE.Raycaster | null = null
 let clickHandler: ((event: MouseEvent) => void) | null = null
-let moveHandlerRef: ((event: MouseEvent) => void) | null = null
-let leaveHandlerRef: (() => void) | null = null
+let storedMoveHandler: ((event: MouseEvent) => void) | null = null
+let storedLeaveHandler: (() => void) | null = null
 
 /**
  * 模型加载版本号：每次进入 loadModel 自增，用于识别"被新切换覆盖"的过期回调。
@@ -157,8 +157,8 @@ function setupInteraction(): void {
   dom.addEventListener('mousemove', moveHandler)
   dom.addEventListener('mouseleave', leaveHandler)
   // 暴露给 onBeforeUnmount 清理
-  moveHandlerRef.value = moveHandler
-  leaveHandlerRef.value = leaveHandler
+  storedMoveHandler = moveHandler
+  storedLeaveHandler = leaveHandler
 }
 
 onMounted(() => {
@@ -205,12 +205,12 @@ onBeforeUnmount(() => {
   const dom = sceneManager?.getRenderer().domElement
   if (dom) {
     if (clickHandler) dom.removeEventListener('click', clickHandler)
-    if (moveHandlerRef) dom.removeEventListener('mousemove', moveHandlerRef)
-    if (leaveHandlerRef) dom.removeEventListener('mouseleave', leaveHandlerRef)
+    if (storedMoveHandler) dom.removeEventListener('mousemove', storedMoveHandler)
+    if (storedLeaveHandler) dom.removeEventListener('mouseleave', storedLeaveHandler)
   }
   clickHandler = null
-  moveHandlerRef = null
-  leaveHandlerRef = null
+  storedMoveHandler = null
+  storedLeaveHandler = null
   pointManager?.clear()
   pointManager = null
   sceneManager?.stop()
