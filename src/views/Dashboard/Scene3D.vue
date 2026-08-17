@@ -21,6 +21,13 @@ const props = withDefaults(defineProps<Props>(), {
 const dashboardStore = useDashboardStore()
 const wsStore = useWebSocketStore()
 
+/** 视图切换按钮配置（中文标签 + tooltip） */
+const VIEW_BUTTONS = [
+  { dir: 'front' as const, label: '前', title: '前视图（沿 -Z 看）' },
+  { dir: 'left' as const, label: '左', title: '左视图（沿 -X 看）' },
+  { dir: 'top' as const, label: '俯', title: '俯视图（沿 +Y 看）' },
+]
+
 const containerRef = ref<HTMLDivElement>()
 const modelLoading = ref(false)
 const modelError = ref('')
@@ -196,11 +203,28 @@ onBeforeUnmount(() => {
   sceneManager?.stop()
   sceneManager = null
 })
+
+/** 视图切换按钮：摆正到前/左/俯三视图，保留当前 target 与距离 */
+function setView(direction: 'front' | 'left' | 'top'): void {
+  sceneManager?.setView(direction)
+}
 </script>
 
 <template>
   <div ref="containerRef" v-loading="modelLoading" class="scene-container">
     <div v-if="modelError" class="model-tip">{{ modelError }}</div>
+    <div class="view-controls" role="toolbar">
+      <button
+        v-for="v in VIEW_BUTTONS"
+        :key="v.dir"
+        type="button"
+        :title="v.title"
+        class="view-btn"
+        @click="setView(v.dir)"
+      >
+        {{ v.label }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -222,5 +246,39 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: #e6a23c;
   background: rgba(0, 0, 0, 0.45);
+}
+
+.view-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.view-btn {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #d8e3f0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.view-btn:active {
+  background: rgba(63, 231, 201, 0.2);
+  border-color: #3de7c9;
 }
 </style>

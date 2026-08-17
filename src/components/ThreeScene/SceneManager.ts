@@ -124,6 +124,31 @@ export class SceneManager {
     this.controls.update()
   }
 
+  /**
+   * 把相机摆到正交标准视图方向（沿用当前 target 与距离，保留缩放）。
+   *  - front：沿 -Z 看 +Y up（相机在 (0, 0, +dist)，target 中心）
+   *  - left ：沿 -X 看 +Y up（相机在 (-dist, 0, 0)，target 中心）
+   *  - top  ：沿 +Y 看 -Z 方向（相机在 (0, +dist, 0)，target 中心）
+   * 调用 fitToModel 之后再切换最稳。
+   */
+  setView(direction: 'front' | 'left' | 'top'): void {
+    const target = this.controls.target.clone()
+    const dist = this.camera.position.distanceTo(target)
+    if (dist < 0.001) return
+
+    const offset =
+      direction === 'front'
+        ? new THREE.Vector3(0, 0, dist)
+        : direction === 'left'
+          ? new THREE.Vector3(-dist, 0, 0)
+          : new THREE.Vector3(0, dist, 0)
+
+    this.controls.target.copy(target)
+    this.camera.position.copy(target).add(offset)
+    this.camera.lookAt(target)
+    this.controls.update()
+  }
+
   getScene(): THREE.Scene {
     return this.scene
   }
