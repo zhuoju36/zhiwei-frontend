@@ -39,6 +39,8 @@ let pointManager: PointManager | null = null
 let currentModel: THREE.Group | null = null
 let raycaster: THREE.Raycaster | null = null
 let clickHandler: ((event: MouseEvent) => void) | null = null
+let moveHandlerRef: ((event: MouseEvent) => void) | null = null
+let leaveHandlerRef: (() => void) | null = null
 
 /**
  * 模型加载版本号：每次进入 loadModel 自增，用于识别"被新切换覆盖"的过期回调。
@@ -134,6 +136,29 @@ function setupInteraction(): void {
     }
   }
   dom.addEventListener('click', clickHandler)
+
+  // hover：随鼠标移动命中测点，调 PointManager.hoverPoint 视觉反馈 + cursor
+  const moveHandler = (event: MouseEvent) => {
+    if (!sceneManager || !pointManager || !raycaster) return
+    const rect = dom.getBoundingClientRect()
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(mouse, sceneManager.getCamera())
+    const point = pointManager.getPointByRay(raycaster)
+    const pid = point ? point.pointId : null
+    pointManager.hoverPoint(pid)
+    dom.style.cursor = pid != null ? 'pointer' : ''
+  }
+  // mouseleave 时取消 hover 高亮
+  const leaveHandler = () => {
+    pointManager?.hoverPoint(null)
+    dom.style.cursor = ''
+  }
+  dom.addEventListener('mousemove', moveHandler)
+  dom.addEventListener('mouseleave', leaveHandler)
+  // 暴露给 onBeforeUnmount 清理
+  moveHandlerRef.value = moveHandler
+  leaveHandlerRef.value = leaveHandler
 }
 
 onMounted(() => {
@@ -177,10 +202,15 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  if (clickHandler && sceneManager) {
-    sceneManager.getRenderer().domElement.removeEventListener('click', clickHandler)
-    clickHandler = null
+  const dom = sceneManager?.getRenderer().domElement
+  if (dom) {
+    if (clickHandler) dom.removeEventListener('click', clickHandler)
+    if (moveHandlerRef) dom.removeEventListener('mousemove', moveHandlerRef)
+    if (leaveHandlerRef) dom.removeEventListener('mouseleave', leaveHandlerRef)
   }
+  clickHandler = null
+  moveHandlerRef = null
+  leaveHandlerRef = null
   pointManager?.clear()
   pointManager = null
   sceneManager?.stop()
