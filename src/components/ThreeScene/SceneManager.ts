@@ -76,7 +76,8 @@ export class SceneManager {
 
     // gizmo：mini scene + ortho camera，跟随主相机旋转
     this.gizmoScene = new THREE.Scene()
-    this.gizmoCamera = new THREE.OrthographicCamera(-1.2, 1.2, 1.2, -1.2, 0.1, 10)
+    // 视野 ±1.5：让 ±1.3 处的 Sprite 文字标签（X/Y/Z）保留 0.2 余量不被裁切
+    this.gizmoCamera = new THREE.OrthographicCamera(-1.5, 1.5, 1.5, -1.5, 0.1, 10)
     this.gizmoCamera.position.set(0, 0, 3)
     this.gizmoCamera.lookAt(0, 0, 0)
     this.gizmoGroup = this.buildGizmoGroup()
