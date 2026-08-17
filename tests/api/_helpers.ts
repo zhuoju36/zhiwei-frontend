@@ -10,7 +10,9 @@ import { expect } from 'vitest'
 export const API_BASE = process.env.API_BASE ?? 'http://localhost:8000'
 export const API_V1 = `${API_BASE}/api/v1`
 
-export interface Envelope<T = unknown> {
+// 默认 T=any：测试里大量使用 `as` cast 收窄类型，此处放行为 any
+// 让调用方在不显式指定类型时仍可访问 data 字段；具体类型在各测试中按需断言。
+export interface Envelope<T = any> {
   code: string
   message: string
   data: T | null
@@ -59,7 +61,7 @@ export function authHeaders(t: TokenPair): AxiosRequestConfig['headers'] {
 }
 
 /** 已鉴权请求便捷封装 */
-export async function authed<T = unknown>(
+export async function authed<T = any>(
   config: AxiosRequestConfig & { auth?: TokenPair },
 ): Promise<AxiosResponse<Envelope<T>>> {
   const t = config.auth ?? (await login())
@@ -70,7 +72,7 @@ export async function authed<T = unknown>(
 }
 
 /** 失败用例的便利封装：不带 token */
-export async function anon<T = unknown>(config: AxiosRequestConfig) {
+export async function anon<T = any>(config: AxiosRequestConfig) {
   return http.request<Envelope<T>>(config)
 }
 

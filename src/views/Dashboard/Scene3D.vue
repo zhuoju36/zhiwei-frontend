@@ -224,12 +224,11 @@ function setView(direction: 'front' | 'left' | 'top'): void {
 
 /** 给模型所有 mesh 换成白色 Lambert 材质，呈现"白模"风格 */
 function applyWhiteMaterial(model: THREE.Object3D): void {
-  const white = new THREE.MeshLambertMaterial({ color: 0xffffff })
+  const white = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: false })
   model.traverse((obj) => {
     const mesh = obj as THREE.Mesh
     if (mesh.isMesh) {
       mesh.material = white
-      mesh.material.color.set(0xffffff) // 抵消 GLTF 自带 vertex color
     }
   })
 }

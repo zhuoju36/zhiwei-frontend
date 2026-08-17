@@ -6,7 +6,6 @@ import type { Sensor } from '@/types'
 /** 构造一个最小 Sensor 对象用于单测 */
 function mkSensor(over: Partial<Sensor> & { id: number; position: Sensor['position'] }): Sensor {
   return {
-    id: over.id,
     device_id: 1,
     sensor_code: over.sensor_code ?? `S${over.id}`,
     sensor_name: over.sensor_name ?? null,
@@ -15,7 +14,6 @@ function mkSensor(over: Partial<Sensor> & { id: number; position: Sensor['positi
     manufacturer: null,
     install_date: null,
     last_calibration: null,
-    position: over.position,
     metadata: null,
     note: null,
     is_active: true,
