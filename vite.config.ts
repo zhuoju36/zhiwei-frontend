@@ -18,17 +18,19 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8001',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8001',
+        target: 'ws://localhost:8000',
         ws: true,
       },
     },
   },
   test: {
     environment: 'node',
-    include: ['tests/unit/**/*.test.ts'],
+    include: ['tests/unit/**/*.test.ts', 'tests/api/**/*.test.ts'],
+    testTimeout: 20_000,
+    hookTimeout: 30_000,
   },
 })

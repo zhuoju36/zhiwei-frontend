@@ -107,7 +107,7 @@ async function onSubmit(): Promise<void> {
   }
 }
 
-/** 创建首个管理员：成功后直接写入令牌并进入系统 */
+/** 创建首个管理员：成功后直接写入令牌与 profile（role='admin' by construction） */
 async function onSetupSubmit(): Promise<void> {
   const valid = await setupFormRef.value?.validate().catch(() => false)
   if (!valid) return
@@ -119,6 +119,14 @@ async function onSetupSubmit(): Promise<void> {
       password: setupForm.password,
     })
     userStore.setTokens(res.access_token, res.refresh_token)
+    // init-admin 路径不返回 role/email/is_active —— 由初始化语义直接构造
+    userStore.setProfile({
+      userId: res.admin_id,
+      username: res.username,
+      email: setupForm.email,
+      role: 'admin',
+      isActive: true,
+    })
     ElMessage.success(`初始化完成，欢迎 ${res.username}`)
     router.push('/')
   } catch (err) {
