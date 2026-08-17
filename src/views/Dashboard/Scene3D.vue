@@ -84,6 +84,7 @@ async function loadModel(id: number | null): Promise<void> {
     }
 
     currentModel = model
+    applyWhiteMaterial(currentModel)
     sceneManager.getScene().add(currentModel)
     sceneManager.fitToModel(currentModel)
   } catch {

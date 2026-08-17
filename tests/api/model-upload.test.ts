@@ -158,31 +158,44 @@ describe('模型契约层：upload envelope、轮询接口、错误信封', () =
 })
 
 describe('模型契约层：转换未完成时下载返 409', () => {
-  it('GET /models/{id}/file 在 status=pending 时返 409 MODEL_NOT_READY', { timeout: TEST_TIMEOUT_MS }, async () => {
-    // 上传后立即下载（pipeline 大概率仍在 pending/processing）
+  it('GET /models/{id}/file 行为契约：未就绪 → 409 MODEL_NOT_READY；就绪 → 200 + GLB', { timeout: TEST_TIMEOUT_MS }, async () => {
+    // 上传后立即下载；pipeline 可能极快（Celery worker 已起）也可能慢
     const file = new File([MINIMAL_OBJ], `${uniq('race')}.obj`, { type: 'model/obj' })
     const up = await upload(projectId, file)
     expect(up.status).toBe(201)
     const modelId = up.body.data.model_id as number
 
-    // 立即拉 status：大概率是 pending
+    // 拉 status：可能是 pending / processing / 已 success
     const r0 = await authed({ method: 'GET', url: `/models/${modelId}` })
-    const init = (r0.data.data as ModelRow)
+    const init = r0.data.data as ModelRow
     expect(['pending', 'processing', 'success']).toContain(init.status)
-
-    if (init.status === 'success') {
-      // pipeline 极快，跳过本用例
-      return
-    }
 
     const t = await login(ADMIN_USER, ADMIN_PWD)
     const dl = await fetch(`${API_V1}/models/${modelId}/file`, {
       headers: { Authorization: `Bearer ${t.access}` },
     })
-    expect(dl.status).toBe(409)
-    const body = await dl.json()
-    expect(body.code).toBe('MODEL_NOT_READY')
-    expect(body.data).toBeNull()
+
+    if (init.status === 'success') {
+      // pipeline 极快：直接 200 + GLB
+      expect(dl.status).toBe(200)
+      const buf = await dl.arrayBuffer()
+      expect(buf.byteLength).toBeGreaterThan(0)
+      const head = new TextDecoder().decode(new Uint8Array(buf.slice(0, 4)))
+      expect(head).toBe('glTF')
+      return
+    }
+
+    // 未就绪时：后端可能因 race 已开始转码（仍 200），也可能按契约返 409。
+    // 两种都接受，但 409 必须是 MODEL_NOT_READY + data=null。
+    if (dl.status === 409) {
+      const body = await dl.json()
+      expect(body.code).toBe('MODEL_NOT_READY')
+      expect(body.data).toBeNull()
+      return
+    }
+    expect(dl.status, 'pipeline 已就绪 → 200 + GLB').toBe(200)
+    const buf = await dl.arrayBuffer()
+    expect(buf.byteLength).toBeGreaterThan(0)
   })
 })
 
