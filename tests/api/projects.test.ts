@@ -88,4 +88,26 @@ describe('子项 / projects', () => {
     const res = await authed({ method: 'DELETE', url: `/projects/${pid}` })
     expect([204, 404]).toContain(res.status)
   })
+
+  it('DELETE 含设备但无 sensor 的项目应 204（验收 SHM-API-003-R）', async () => {
+    // 1. 建项目
+    const p = await authed({ method: 'POST', url: '/projects', data: { name: uniq('p-with-dev') } })
+    const pidNew = p.data.data!.id as number
+
+    // 2. 在该项目下建一个设备，不建 sensor/channel
+    const d = await authed({
+      method: 'POST', url: '/devices',
+      data: { project_id: pidNew, device_code: uniq('dev'), protocol: 'mqtt' },
+    })
+    expect(d.status).toBe(201)
+    const did = d.data.data!.id as number
+
+    // 3. 删项目，应 204（之前这条路径会 500）
+    const del = await authed({ method: 'DELETE', url: `/projects/${pidNew}` })
+    expect(del.status).toBe(204)
+
+    // 4. 设备应被级联清理（GET 返 404，行为由后端决定）
+    const check = await authed({ method: 'GET', url: `/devices/${did}` })
+    expect([404, 422]).toContain(check.status)
+  })
 })
